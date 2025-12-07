@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secret Santa - Name Assigner</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎅 Secret Santa Assigner</h1>
+            <p>Organize your Secret Santa event with ease!</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Left sidebar for name input -->
+            <aside class="sidebar">
+                <h2>Participants</h2>
+                <div class="name-input-section">
+                    <input type="text" id="nameInput" placeholder="Enter a name" />
+                    <button id="addNameBtn">Add Name</button>
+                </div>
+                <div id="namesList" class="names-list"></div>
+                <button id="submitNamesBtn" class="primary-btn" disabled>Submit Names</button>
+            </aside>
+
+            <!-- Main area -->
+            <main class="main-area">
+                <div id="initialState" class="state-panel">
+                    <h2>Welcome!</h2>
+                    <p>Start by adding participant names to the left panel.</p>
+                    <p>You need at least 2 participants to begin.</p>
+                </div>
+
+                <div id="selectUserState" class="state-panel hidden">
+                    <h2>Select Your Name</h2>
+                    <p>Choose your name from the dropdown to exclude yourself from getting your own number:</p>
+                    <select id="userSelect" class="user-dropdown">
+                        <option value="">-- Select Your Name --</option>
+                    </select>
+                    <button id="distributeBtn" class="primary-btn" disabled>Distribute Numbers</button>
+                </div>
+
+                <div id="resultState" class="state-panel hidden">
+                    <h2>Numbers Distributed!</h2>
+                    <p>The assignments have been created. Download the JSON file to save the results.</p>
+                    <button id="downloadBtn" class="primary-btn">Download JSON</button>
+                    <button id="resetBtn" class="secondary-btn">Start Over</button>
+                    
+                    <div class="preview-section">
+                        <h3>Preview (for organizer only)</h3>
+                        <pre id="jsonPreview"></pre>
+                    </div>
+                </div>
+
+                <div class="upload-section">
+                    <h3>Upload Previous Assignment</h3>
+                    <input type="file" id="uploadInput" accept=".json" />
+                    <button id="uploadBtn" class="secondary-btn">Load JSON</button>
+                    <div id="uploadResult" class="upload-result hidden"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
