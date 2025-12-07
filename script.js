@@ -3,6 +3,9 @@ let participants = [];
 let assignments = {};
 let selectedUser = '';
 
+// Constants
+const MAX_ASSIGNMENT_ATTEMPTS = 100;
+
 // DOM elements
 const nameInput = document.getElementById('nameInput');
 const addNameBtn = document.getElementById('addNameBtn');
@@ -127,7 +130,7 @@ function distributeNumbers() {
     
     // Use a proper algorithm to ensure valid assignment
     // Try multiple times if needed to get a valid assignment
-    let maxAttempts = 100;
+    let maxAttempts = MAX_ASSIGNMENT_ATTEMPTS;
     let validAssignment = false;
     
     while (!validAssignment && maxAttempts > 0) {
@@ -201,7 +204,9 @@ function handleUpload() {
     const file = uploadInput.files[0];
     
     if (!file) {
-        showUploadResult('Please select a file', true);
+        uploadResult.textContent = 'Please select a file';
+        uploadResult.classList.remove('hidden');
+        uploadResult.classList.add('error');
         return;
     }
     
@@ -217,34 +222,38 @@ function handleUpload() {
             }
             
             // Display the uploaded data
-            let resultHTML = '<h4>Uploaded Assignments:</h4><ul>';
-            for (const [name, number] of Object.entries(data)) {
-                resultHTML += `<li><strong>${escapeHtml(name)}</strong>: ${escapeHtml(String(number))}</li>`;
-            }
-            resultHTML += '</ul>';
+            uploadResult.innerHTML = '';
             
-            showUploadResult(resultHTML, false);
+            const heading = document.createElement('h4');
+            heading.textContent = 'Uploaded Assignments:';
+            uploadResult.appendChild(heading);
+            
+            const list = document.createElement('ul');
+            for (const [name, number] of Object.entries(data)) {
+                const listItem = document.createElement('li');
+                const strong = document.createElement('strong');
+                strong.textContent = name;
+                listItem.appendChild(strong);
+                listItem.appendChild(document.createTextNode(': ' + number));
+                list.appendChild(listItem);
+            }
+            uploadResult.appendChild(list);
+            
+            uploadResult.classList.remove('hidden', 'error');
         } catch (error) {
-            showUploadResult('Error parsing JSON file: ' + error.message, true);
+            uploadResult.textContent = 'Error parsing JSON file: ' + error.message;
+            uploadResult.classList.remove('hidden');
+            uploadResult.classList.add('error');
         }
     };
     
     reader.onerror = () => {
-        showUploadResult('Error reading file', true);
+        uploadResult.textContent = 'Error reading file';
+        uploadResult.classList.remove('hidden');
+        uploadResult.classList.add('error');
     };
     
     reader.readAsText(file);
-}
-
-function showUploadResult(message, isError) {
-    uploadResult.innerHTML = message;
-    uploadResult.classList.remove('hidden');
-    
-    if (isError) {
-        uploadResult.classList.add('error');
-    } else {
-        uploadResult.classList.remove('error');
-    }
 }
 
 function resetApp() {
