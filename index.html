@@ -17,8 +17,8 @@
 
         <!-- Mode Toggle Buttons -->
         <div class="mode-toggle">
-            <button id="switchToOrganizerBtn" class="btn btn-primary active">Organizer Mode</button>
-            <button id="switchToParticipantBtn" class="btn btn-outline">Participant Mode</button>
+            <button id="switchToOrganizerBtn" class="btn btn-primary active" aria-pressed="true" role="button">Organizer Mode</button>
+            <button id="switchToParticipantBtn" class="btn btn-outline" aria-pressed="false" role="button">Participant Mode</button>
         </div>
 
         <!-- Organizer View -->
@@ -30,7 +30,8 @@
                     </div>
                     <div class="card-body">
                         <div class="input-group">
-                            <input type="text" id="nameInput" class="form-control" placeholder="Enter a name" />
+                            <label for="nameInput" class="visually-hidden">Participant Name</label>
+                            <input type="text" id="nameInput" class="form-control" placeholder="Enter a name" aria-label="Participant name" />
                             <button id="addNameBtn" class="btn btn-success">Add</button>
                         </div>
                         <div id="namesList" class="names-list"></div>
@@ -117,6 +118,7 @@
                         <h6>Load Existing Event</h6>
                     </div>
                     <div class="card-body">
+                        <label for="uploadInput" class="form-label">Select JSON file to load event data</label>
                         <input type="file" id="uploadInput" class="form-control" accept=".json" />
                         <button id="uploadBtn" class="btn btn-secondary mt-2">Load JSON</button>
                         <div id="uploadResult" class="alert mt-2 d-none"></div>

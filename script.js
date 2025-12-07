@@ -284,6 +284,25 @@ function handleUpload() {
                 throw new Error('Invalid JSON format: missing participants array');
             }
             
+            // Validate participants are strings
+            if (!data.participants.every(p => typeof p === 'string' && p.trim().length > 0)) {
+                throw new Error('Invalid participant names in JSON');
+            }
+            
+            // Validate assignments if present
+            if (data.assignments) {
+                if (typeof data.assignments !== 'object' || Array.isArray(data.assignments)) {
+                    throw new Error('Invalid assignments format');
+                }
+                
+                // Validate assignment values are numbers
+                for (const [name, number] of Object.entries(data.assignments)) {
+                    if (typeof number !== 'number' || number < 1 || number > data.participants.length) {
+                        throw new Error(`Invalid assignment for ${name}: ${number}`);
+                    }
+                }
+            }
+            
             // Load data
             participants = data.participants;
             assignments = data.assignments || {};
@@ -385,9 +404,31 @@ function loadFromLocalStorage() {
     if (data) {
         try {
             const parsed = JSON.parse(data);
-            participants = parsed.participants || [];
-            assignments = parsed.assignments || {};
-            eventInitialized = parsed.eventInitialized || false;
+            
+            // Validate participants
+            if (parsed.participants && Array.isArray(parsed.participants)) {
+                if (parsed.participants.every(p => typeof p === 'string' && p.trim().length > 0)) {
+                    participants = parsed.participants;
+                } else {
+                    console.warn('Invalid participants in localStorage');
+                    participants = [];
+                }
+            }
+            
+            // Validate assignments
+            if (parsed.assignments && typeof parsed.assignments === 'object' && !Array.isArray(parsed.assignments)) {
+                const validAssignments = {};
+                for (const [name, number] of Object.entries(parsed.assignments)) {
+                    if (typeof number === 'number' && number >= 1 && number <= participants.length) {
+                        validAssignments[name] = number;
+                    }
+                }
+                assignments = validAssignments;
+            } else {
+                assignments = {};
+            }
+            
+            eventInitialized = parsed.eventInitialized && participants.length > 0;
             
             renderNamesList();
             updateInitializeButton();
