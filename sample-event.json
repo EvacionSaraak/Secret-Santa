@@ -1,0 +1,14 @@
+{
+  "participants": [
+    "Alice",
+    "Bob",
+    "Carol",
+    "David"
+  ],
+  "assignments": {
+    "Alice": 3,
+    "Bob": 1,
+    "Carol": 4
+  },
+  "timestamp": "2025-12-07T10:00:00.000Z"
+}

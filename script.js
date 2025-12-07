@@ -1,39 +1,51 @@
 // State management
 let participants = [];
-let assignments = {};
-let selectedUser = '';
-
-// Constants
-const MAX_ASSIGNMENT_ATTEMPTS = 100;
+let assignments = {}; // { name: number } - stores who picked which number
+let eventInitialized = false;
+let currentView = 'organizer'; // 'organizer' or 'participant'
 
 // DOM elements
 const nameInput = document.getElementById('nameInput');
 const addNameBtn = document.getElementById('addNameBtn');
 const namesList = document.getElementById('namesList');
-const submitNamesBtn = document.getElementById('submitNamesBtn');
-const userSelect = document.getElementById('userSelect');
-const distributeBtn = document.getElementById('distributeBtn');
+const initializeBtn = document.getElementById('initializeBtn');
+
+// Organizer view elements
+const organizerView = document.getElementById('organizerView');
+const organizerInitialState = document.getElementById('organizerInitialState');
+const organizerActiveState = document.getElementById('organizerActiveState');
+const statusDisplay = document.getElementById('statusDisplay');
+const assignmentsPreview = document.getElementById('assignmentsPreview');
 const downloadBtn = document.getElementById('downloadBtn');
 const resetBtn = document.getElementById('resetBtn');
+
+// Participant view elements
+const participantView = document.getElementById('participantView');
+const participantSelect = document.getElementById('participantSelect');
+const numberSelectionArea = document.getElementById('numberSelectionArea');
+const numbersGrid = document.getElementById('numbersGrid');
+const confirmationMessage = document.getElementById('confirmationMessage');
+
+// Mode toggle buttons
+const switchToOrganizerBtn = document.getElementById('switchToOrganizerBtn');
+const switchToParticipantBtn = document.getElementById('switchToParticipantBtn');
+
+// Upload elements
 const uploadInput = document.getElementById('uploadInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadResult = document.getElementById('uploadResult');
-
-// State panels
-const initialState = document.getElementById('initialState');
-const selectUserState = document.getElementById('selectUserState');
-const resultState = document.getElementById('resultState');
 
 // Event listeners
 addNameBtn.addEventListener('click', addName);
 nameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') addName();
 });
-submitNamesBtn.addEventListener('click', submitNames);
-userSelect.addEventListener('change', handleUserSelection);
-distributeBtn.addEventListener('click', distributeNumbers);
+initializeBtn.addEventListener('click', initializeEvent);
 downloadBtn.addEventListener('click', downloadJSON);
-resetBtn.addEventListener('click', resetApp);
+resetBtn.addEventListener('click', resetEvent);
+participantSelect.addEventListener('change', handleParticipantSelection);
+switchToOrganizerBtn.addEventListener('click', () => switchView('organizer'));
+switchToParticipantBtn.addEventListener('click', () => switchView('participant'));
 uploadBtn.addEventListener('click', handleUpload);
 
 // Functions
@@ -53,141 +65,191 @@ function addName() {
     participants.push(name);
     nameInput.value = '';
     renderNamesList();
-    updateSubmitButton();
+    updateInitializeButton();
 }
 
 function removeName(name) {
+    if (eventInitialized) {
+        if (!confirm('Event is already initialized. Removing a participant may affect selections. Continue?')) {
+            return;
+        }
+        // Remove from assignments if they had selected a number
+        delete assignments[name];
+    }
+    
     participants = participants.filter(p => p !== name);
     renderNamesList();
-    updateSubmitButton();
+    updateInitializeButton();
+    
+    if (eventInitialized) {
+        updateOrganizerView();
+        updateParticipantDropdown();
+    }
 }
 
 function renderNamesList() {
     if (participants.length === 0) {
-        namesList.innerHTML = '<p style="color: #999; text-align: center; padding: 20px;">No participants yet</p>';
+        namesList.innerHTML = '<p class="text-muted text-center p-3">No participants yet</p>';
         return;
     }
     
     namesList.innerHTML = '';
     participants.forEach(name => {
-        const nameItem = document.createElement('div');
-        nameItem.className = 'name-item';
+        const item = document.createElement('div');
+        item.className = 'list-group-item';
         
         const nameSpan = document.createElement('span');
         nameSpan.textContent = name;
         
         const removeButton = document.createElement('button');
-        removeButton.className = 'remove-btn';
+        removeButton.className = 'btn btn-danger btn-sm';
         removeButton.textContent = 'Remove';
         removeButton.addEventListener('click', () => removeName(name));
         
-        nameItem.appendChild(nameSpan);
-        nameItem.appendChild(removeButton);
-        namesList.appendChild(nameItem);
+        item.appendChild(nameSpan);
+        item.appendChild(removeButton);
+        namesList.appendChild(item);
     });
 }
 
-function updateSubmitButton() {
-    submitNamesBtn.disabled = participants.length < 2;
+function updateInitializeButton() {
+    initializeBtn.disabled = participants.length < 2;
 }
 
-function submitNames() {
+function initializeEvent() {
     if (participants.length < 2) {
         alert('You need at least 2 participants');
         return;
     }
     
-    // Populate dropdown
-    userSelect.innerHTML = '<option value="">-- Select Your Name --</option>';
+    eventInitialized = true;
+    assignments = {}; // Reset assignments
+    
+    // Update UI
+    organizerInitialState.classList.add('d-none');
+    organizerActiveState.classList.remove('d-none');
+    
+    updateOrganizerView();
+    updateParticipantDropdown();
+}
+
+function updateOrganizerView() {
+    if (!eventInitialized) return;
+    
+    // Update status display
+    statusDisplay.innerHTML = '';
+    participants.forEach(name => {
+        const statusItem = document.createElement('div');
+        const hasSelected = assignments[name] !== undefined;
+        
+        statusItem.className = `status-item ${hasSelected ? 'completed' : 'pending'}`;
+        statusItem.innerHTML = `
+            <span>${escapeHtml(name)}</span>
+            <span class="badge ${hasSelected ? 'bg-success' : 'bg-warning'} status-badge">
+                ${hasSelected ? '✓ Selected' : 'Pending'}
+            </span>
+        `;
+        statusDisplay.appendChild(statusItem);
+    });
+    
+    // Update assignments preview
+    assignmentsPreview.innerHTML = '';
+    if (Object.keys(assignments).length === 0) {
+        assignmentsPreview.innerHTML = '<p class="text-muted">No selections yet</p>';
+    } else {
+        const sortedAssignments = Object.entries(assignments).sort((a, b) => a[1] - b[1]);
+        sortedAssignments.forEach(([name, number]) => {
+            const item = document.createElement('div');
+            item.className = 'assignment-item';
+            item.innerHTML = `<strong>${escapeHtml(name)}</strong>: Number ${number}`;
+            assignmentsPreview.appendChild(item);
+        });
+    }
+}
+
+function updateParticipantDropdown() {
+    participantSelect.innerHTML = '<option value="">-- Select Your Name --</option>';
     participants.forEach(name => {
         const option = document.createElement('option');
         option.value = name;
         option.textContent = name;
-        userSelect.appendChild(option);
+        participantSelect.appendChild(option);
     });
+}
+
+function handleParticipantSelection() {
+    const selectedName = participantSelect.value;
     
-    // Switch to user selection state
-    showState('selectUser');
-}
-
-function handleUserSelection() {
-    selectedUser = userSelect.value;
-    distributeBtn.disabled = selectedUser === '';
-}
-
-function distributeNumbers() {
-    if (selectedUser === '') {
-        alert('Please select your name');
+    if (selectedName === '') {
+        numberSelectionArea.classList.add('d-none');
+        confirmationMessage.classList.add('d-none');
         return;
     }
     
-    // Create array of numbers from 1 to N
-    const numbers = Array.from({ length: participants.length }, (_, i) => i + 1);
+    // Check if this participant has already selected
+    if (assignments[selectedName]) {
+        confirmationMessage.classList.remove('d-none');
+        confirmationMessage.textContent = `You have already selected number ${assignments[selectedName]}`;
+        numberSelectionArea.classList.add('d-none');
+        return;
+    }
     
-    // Find the index of the selected user
-    const userIndex = participants.indexOf(selectedUser);
-    const userPositionNumber = userIndex + 1;
+    // Show available numbers
+    renderNumbersGrid(selectedName);
+    numberSelectionArea.classList.remove('d-none');
+    confirmationMessage.classList.add('d-none');
+}
+
+function renderNumbersGrid(selectedName) {
+    numbersGrid.innerHTML = '';
+    const totalNumbers = participants.length;
+    const takenNumbers = Object.values(assignments);
     
-    // Use a proper algorithm to ensure valid assignment
-    // Try multiple times if needed to get a valid assignment
-    let maxAttempts = MAX_ASSIGNMENT_ATTEMPTS;
-    let validAssignment = false;
-    
-    while (!validAssignment && maxAttempts > 0) {
-        assignments = {};
-        let availableNumbers = [...numbers];
-        validAssignment = true;
-        
-        // Randomly shuffle the order of processing participants
-        // This helps avoid the edge case where the selected user is last
-        const processingOrder = [...Array(participants.length).keys()]
-            .sort(() => Math.random() - 0.5);
-        
-        for (const index of processingOrder) {
-            const participant = participants[index];
-            let numberToAssign;
+    for (let i = 1; i <= totalNumbers; i++) {
+        if (!takenNumbers.includes(i)) {
+            const button = document.createElement('button');
+            button.className = 'number-btn';
+            button.textContent = i;
+            button.addEventListener('click', () => selectNumber(selectedName, i));
             
-            if (index === userIndex) {
-                // For the selected user, exclude their position number
-                const validNumbers = availableNumbers.filter(n => n !== userPositionNumber);
-                
-                if (validNumbers.length === 0) {
-                    // Invalid assignment - retry
-                    validAssignment = false;
-                    break;
-                }
-                
-                numberToAssign = validNumbers[Math.floor(Math.random() * validNumbers.length)];
-            } else {
-                // For other participants, any available number is fine
-                if (availableNumbers.length === 0) {
-                    // Should never happen, but handle it
-                    validAssignment = false;
-                    break;
-                }
-                
-                numberToAssign = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
-            }
-            
-            assignments[participant] = numberToAssign;
-            availableNumbers = availableNumbers.filter(n => n !== numberToAssign);
+            numbersGrid.appendChild(button);
         }
-        
-        maxAttempts--;
     }
-    
-    if (!validAssignment) {
-        alert('Unable to create a valid assignment. Please try again.');
+}
+
+function selectNumber(name, number) {
+    // Confirm selection
+    if (!confirm(`Confirm selection of number ${number}?`)) {
         return;
     }
     
-    // Display results
-    document.getElementById('jsonPreview').textContent = JSON.stringify(assignments, null, 2);
-    showState('result');
+    // Store the selection
+    assignments[name] = number;
+    
+    // Show confirmation
+    confirmationMessage.classList.remove('d-none');
+    confirmationMessage.textContent = `✓ You have successfully selected number ${number}`;
+    
+    // Hide numbers grid
+    numbersGrid.innerHTML = '';
+    
+    // Update organizer view if in that mode
+    if (currentView === 'organizer') {
+        updateOrganizerView();
+    }
+    
+    // Save to localStorage for persistence
+    saveToLocalStorage();
 }
 
 function downloadJSON() {
-    const dataStr = JSON.stringify(assignments, null, 2);
+    const data = {
+        participants: participants,
+        assignments: assignments,
+        timestamp: new Date().toISOString()
+    };
+    
+    const dataStr = JSON.stringify(data, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     
@@ -205,8 +267,9 @@ function handleUpload() {
     
     if (!file) {
         uploadResult.textContent = 'Please select a file';
-        uploadResult.classList.remove('hidden');
-        uploadResult.classList.add('error');
+        uploadResult.classList.remove('d-none');
+        uploadResult.classList.add('alert-danger');
+        uploadResult.classList.remove('alert-success');
         return;
     }
     
@@ -216,73 +279,88 @@ function handleUpload() {
         try {
             const data = JSON.parse(e.target.result);
             
-            // Validate the JSON structure
-            if (typeof data !== 'object' || Array.isArray(data)) {
-                throw new Error('Invalid JSON format');
+            // Validate structure
+            if (!data.participants || !Array.isArray(data.participants)) {
+                throw new Error('Invalid JSON format: missing participants array');
             }
             
-            // Display the uploaded data
-            uploadResult.innerHTML = '';
+            // Load data
+            participants = data.participants;
+            assignments = data.assignments || {};
+            eventInitialized = participants.length > 0;
             
-            const heading = document.createElement('h4');
-            heading.textContent = 'Uploaded Assignments:';
-            uploadResult.appendChild(heading);
+            // Update UI
+            renderNamesList();
+            updateInitializeButton();
             
-            const list = document.createElement('ul');
-            for (const [name, number] of Object.entries(data)) {
-                const listItem = document.createElement('li');
-                const strong = document.createElement('strong');
-                strong.textContent = name;
-                listItem.appendChild(strong);
-                listItem.appendChild(document.createTextNode(': ' + number));
-                list.appendChild(listItem);
+            if (eventInitialized) {
+                organizerInitialState.classList.add('d-none');
+                organizerActiveState.classList.remove('d-none');
+                updateOrganizerView();
+                updateParticipantDropdown();
             }
-            uploadResult.appendChild(list);
             
-            uploadResult.classList.remove('hidden', 'error');
+            // Show success message
+            uploadResult.textContent = `✓ Successfully loaded event with ${participants.length} participants`;
+            uploadResult.classList.remove('d-none', 'alert-danger');
+            uploadResult.classList.add('alert-success');
+            
+            saveToLocalStorage();
+            
         } catch (error) {
             uploadResult.textContent = 'Error parsing JSON file: ' + error.message;
-            uploadResult.classList.remove('hidden');
-            uploadResult.classList.add('error');
+            uploadResult.classList.remove('d-none', 'alert-success');
+            uploadResult.classList.add('alert-danger');
         }
     };
     
     reader.onerror = () => {
         uploadResult.textContent = 'Error reading file';
-        uploadResult.classList.remove('hidden');
-        uploadResult.classList.add('error');
+        uploadResult.classList.remove('d-none', 'alert-success');
+        uploadResult.classList.add('alert-danger');
     };
     
     reader.readAsText(file);
 }
 
-function resetApp() {
+function resetEvent() {
+    if (!confirm('Are you sure you want to reset the event? This will clear all data.')) {
+        return;
+    }
+    
     participants = [];
     assignments = {};
-    selectedUser = '';
-    nameInput.value = '';
-    uploadInput.value = '';
-    uploadResult.classList.add('hidden');
+    eventInitialized = false;
+    
     renderNamesList();
-    updateSubmitButton();
-    showState('initial');
+    updateInitializeButton();
+    organizerActiveState.classList.add('d-none');
+    organizerInitialState.classList.remove('d-none');
+    
+    numberSelectionArea.classList.add('d-none');
+    confirmationMessage.classList.add('d-none');
+    participantSelect.value = '';
+    
+    clearLocalStorage();
 }
 
-function showState(state) {
-    initialState.classList.add('hidden');
-    selectUserState.classList.add('hidden');
-    resultState.classList.add('hidden');
+function switchView(view) {
+    currentView = view;
     
-    switch (state) {
-        case 'initial':
-            initialState.classList.remove('hidden');
-            break;
-        case 'selectUser':
-            selectUserState.classList.remove('hidden');
-            break;
-        case 'result':
-            resultState.classList.remove('hidden');
-            break;
+    if (view === 'organizer') {
+        organizerView.classList.remove('d-none');
+        participantView.classList.add('d-none');
+        switchToOrganizerBtn.classList.add('active');
+        switchToParticipantBtn.classList.remove('active');
+    } else {
+        organizerView.classList.add('d-none');
+        participantView.classList.remove('d-none');
+        switchToParticipantBtn.classList.add('active');
+        switchToOrganizerBtn.classList.remove('active');
+        
+        if (eventInitialized) {
+            updateParticipantDropdown();
+        }
     }
 }
 
@@ -292,6 +370,46 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-// Initialize
+// LocalStorage functions for persistence
+function saveToLocalStorage() {
+    const data = {
+        participants: participants,
+        assignments: assignments,
+        eventInitialized: eventInitialized
+    };
+    localStorage.setItem('secretSantaData', JSON.stringify(data));
+}
+
+function loadFromLocalStorage() {
+    const data = localStorage.getItem('secretSantaData');
+    if (data) {
+        try {
+            const parsed = JSON.parse(data);
+            participants = parsed.participants || [];
+            assignments = parsed.assignments || {};
+            eventInitialized = parsed.eventInitialized || false;
+            
+            renderNamesList();
+            updateInitializeButton();
+            
+            if (eventInitialized) {
+                organizerInitialState.classList.add('d-none');
+                organizerActiveState.classList.remove('d-none');
+                updateOrganizerView();
+                updateParticipantDropdown();
+            }
+        } catch (e) {
+            console.error('Error loading from localStorage:', e);
+        }
+    }
+}
+
+function clearLocalStorage() {
+    localStorage.removeItem('secretSantaData');
+}
+
+// Initialize on page load
 renderNamesList();
-updateSubmitButton();
+updateInitializeButton();
+loadFromLocalStorage();
+switchView('organizer');
