@@ -65,12 +65,23 @@ function renderNamesList() {
         return;
     }
     
-    namesList.innerHTML = participants.map(name => `
-        <div class="name-item">
-            <span>${escapeHtml(name)}</span>
-            <button class="remove-btn" onclick="removeName('${escapeHtml(name)}')">Remove</button>
-        </div>
-    `).join('');
+    namesList.innerHTML = '';
+    participants.forEach(name => {
+        const nameItem = document.createElement('div');
+        nameItem.className = 'name-item';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = name;
+        
+        const removeButton = document.createElement('button');
+        removeButton.className = 'remove-btn';
+        removeButton.textContent = 'Remove';
+        removeButton.addEventListener('click', () => removeName(name));
+        
+        nameItem.appendChild(nameSpan);
+        nameItem.appendChild(removeButton);
+        namesList.appendChild(nameItem);
+    });
 }
 
 function updateSubmitButton() {
@@ -112,34 +123,60 @@ function distributeNumbers() {
     
     // Find the index of the selected user
     const userIndex = participants.indexOf(selectedUser);
+    const userPositionNumber = userIndex + 1;
     
-    // Shuffle numbers with constraint: user cannot get their own position number
-    assignments = {};
-    let availableNumbers = [...numbers];
+    // Use a proper algorithm to ensure valid assignment
+    // Try multiple times if needed to get a valid assignment
+    let maxAttempts = 100;
+    let validAssignment = false;
     
-    participants.forEach((participant, index) => {
-        let numberToAssign;
+    while (!validAssignment && maxAttempts > 0) {
+        assignments = {};
+        let availableNumbers = [...numbers];
+        validAssignment = true;
         
-        if (index === userIndex) {
-            // For the selected user, exclude their position number (index + 1)
-            const userPositionNumber = index + 1;
-            const validNumbers = availableNumbers.filter(n => n !== userPositionNumber);
+        // Randomly shuffle the order of processing participants
+        // This helps avoid the edge case where the selected user is last
+        const processingOrder = [...Array(participants.length).keys()]
+            .sort(() => Math.random() - 0.5);
+        
+        for (const index of processingOrder) {
+            const participant = participants[index];
+            let numberToAssign;
             
-            if (validNumbers.length === 0) {
-                // This should rarely happen, but we need to handle it
-                // In this case, we'll just assign any available number
-                numberToAssign = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
-            } else {
+            if (index === userIndex) {
+                // For the selected user, exclude their position number
+                const validNumbers = availableNumbers.filter(n => n !== userPositionNumber);
+                
+                if (validNumbers.length === 0) {
+                    // Invalid assignment - retry
+                    validAssignment = false;
+                    break;
+                }
+                
                 numberToAssign = validNumbers[Math.floor(Math.random() * validNumbers.length)];
+            } else {
+                // For other participants, any available number is fine
+                if (availableNumbers.length === 0) {
+                    // Should never happen, but handle it
+                    validAssignment = false;
+                    break;
+                }
+                
+                numberToAssign = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
             }
-        } else {
-            // For other participants, any available number is fine
-            numberToAssign = availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+            
+            assignments[participant] = numberToAssign;
+            availableNumbers = availableNumbers.filter(n => n !== numberToAssign);
         }
         
-        assignments[participant] = numberToAssign;
-        availableNumbers = availableNumbers.filter(n => n !== numberToAssign);
-    });
+        maxAttempts--;
+    }
+    
+    if (!validAssignment) {
+        alert('Unable to create a valid assignment. Please try again.');
+        return;
+    }
     
     // Display results
     document.getElementById('jsonPreview').textContent = JSON.stringify(assignments, null, 2);
