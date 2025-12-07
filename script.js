@@ -4,6 +4,11 @@ let assignments = {}; // { name: number } - stores who picked which number
 let eventInitialized = false;
 let currentView = 'organizer'; // 'organizer' or 'participant'
 
+// Real-time sync
+let broadcastChannel = null;
+let syncInterval = null;
+const SYNC_INTERVAL_MS = 2000; // Check for updates every 2 seconds
+
 // DOM elements
 const nameInput = document.getElementById('nameInput');
 const addNameBtn = document.getElementById('addNameBtn');
@@ -35,6 +40,9 @@ const uploadInput = document.getElementById('uploadInput');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadResult = document.getElementById('uploadResult');
 
+// Sync status element
+const syncStatus = document.getElementById('syncStatus');
+
 // Event listeners
 addNameBtn.addEventListener('click', addName);
 nameInput.addEventListener('keypress', (e) => {
@@ -47,6 +55,30 @@ participantSelect.addEventListener('change', handleParticipantSelection);
 switchToOrganizerBtn.addEventListener('click', () => switchView('organizer'));
 switchToParticipantBtn.addEventListener('click', () => switchView('participant'));
 uploadBtn.addEventListener('click', handleUpload);
+
+// Initialize BroadcastChannel for cross-tab communication
+try {
+    broadcastChannel = new BroadcastChannel('secret-santa-sync');
+    broadcastChannel.onmessage = (event) => {
+        if (event.data.type === 'data-updated') {
+            loadFromLocalStorage();
+        }
+    };
+} catch (e) {
+    console.warn('BroadcastChannel not supported, using fallback sync');
+}
+
+// Listen for storage changes from other tabs/windows
+window.addEventListener('storage', (e) => {
+    if (e.key === 'secretSantaData' && e.newValue) {
+        loadFromLocalStorage();
+    }
+});
+
+// Set up periodic sync check
+syncInterval = setInterval(() => {
+    loadFromLocalStorage();
+}, SYNC_INTERVAL_MS);
 
 // Functions
 function addName() {
@@ -129,8 +161,14 @@ function initializeEvent() {
     organizerInitialState.classList.add('d-none');
     organizerActiveState.classList.remove('d-none');
     
+    // Show sync status indicator
+    if (syncStatus) {
+        syncStatus.classList.remove('d-none');
+    }
+    
     updateOrganizerView();
     updateParticipantDropdown();
+    saveToLocalStorage();
 }
 
 function updateOrganizerView() {
@@ -317,6 +355,11 @@ function handleUpload() {
                 organizerActiveState.classList.remove('d-none');
                 updateOrganizerView();
                 updateParticipantDropdown();
+                
+                // Show sync status indicator
+                if (syncStatus) {
+                    syncStatus.classList.remove('d-none');
+                }
             }
             
             // Show success message
@@ -360,6 +403,11 @@ function resetEvent() {
     confirmationMessage.classList.add('d-none');
     participantSelect.value = '';
     
+    // Hide sync status indicator
+    if (syncStatus) {
+        syncStatus.classList.add('d-none');
+    }
+    
     clearLocalStorage();
 }
 
@@ -394,9 +442,19 @@ function saveToLocalStorage() {
     const data = {
         participants: participants,
         assignments: assignments,
-        eventInitialized: eventInitialized
+        eventInitialized: eventInitialized,
+        lastUpdated: new Date().toISOString()
     };
     localStorage.setItem('secretSantaData', JSON.stringify(data));
+    
+    // Notify other tabs about the update
+    if (broadcastChannel) {
+        try {
+            broadcastChannel.postMessage({ type: 'data-updated' });
+        } catch (e) {
+            console.warn('Failed to broadcast update:', e);
+        }
+    }
 }
 
 function loadFromLocalStorage() {
@@ -404,6 +462,19 @@ function loadFromLocalStorage() {
     if (data) {
         try {
             const parsed = JSON.parse(data);
+            
+            // Check if data has actually changed to avoid unnecessary updates
+            const currentData = JSON.stringify({ participants, assignments, eventInitialized });
+            const newData = JSON.stringify({ 
+                participants: parsed.participants || [], 
+                assignments: parsed.assignments || {}, 
+                eventInitialized: parsed.eventInitialized || false 
+            });
+            
+            // Skip update if data hasn't changed
+            if (currentData === newData) {
+                return;
+            }
             
             // Validate participants
             if (parsed.participants && Array.isArray(parsed.participants)) {
@@ -430,6 +501,7 @@ function loadFromLocalStorage() {
             
             eventInitialized = parsed.eventInitialized && participants.length > 0;
             
+            // Update UI
             renderNamesList();
             updateInitializeButton();
             
@@ -438,6 +510,24 @@ function loadFromLocalStorage() {
                 organizerActiveState.classList.remove('d-none');
                 updateOrganizerView();
                 updateParticipantDropdown();
+                
+                // Show sync status indicator
+                if (syncStatus) {
+                    syncStatus.classList.remove('d-none');
+                }
+                
+                // Update participant view if a name is selected
+                if (currentView === 'participant' && participantSelect.value) {
+                    handleParticipantSelection();
+                }
+            } else {
+                organizerInitialState.classList.remove('d-none');
+                organizerActiveState.classList.add('d-none');
+                
+                // Hide sync status indicator
+                if (syncStatus) {
+                    syncStatus.classList.add('d-none');
+                }
             }
         } catch (e) {
             console.error('Error loading from localStorage:', e);
