@@ -5,6 +5,8 @@ const TOTAL_BOXES = 60;
 
 // WebSocket connection
 let socket = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_DELAY = 30000; // 30 seconds max
 
 // DOM elements
 const nameModal = document.getElementById('nameModal');
@@ -147,6 +149,7 @@ function connectToServer() {
     
     socket.onopen = () => {
         console.log('Connected to server');
+        reconnectAttempts = 0; // Reset reconnect attempts on successful connection
         // Identify user to server
         socket.send(JSON.stringify({ 
             type: 'user-identified', 
@@ -158,12 +161,15 @@ function connectToServer() {
     socket.onclose = () => {
         console.log('Disconnected from server');
         updateSyncStatus(false);
-        // Attempt to reconnect after 3 seconds
+        // Exponential backoff: delay = min(2^attempts * 1000, MAX_DELAY)
+        const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, MAX_RECONNECT_DELAY);
+        reconnectAttempts++;
+        console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`);
         setTimeout(() => {
             if (currentUserName) {
                 connectToServer();
             }
-        }, 3000);
+        }, delay);
     };
     
     socket.onerror = (error) => {

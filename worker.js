@@ -46,6 +46,7 @@ export class SecretSantaRoom {
     this.sessions = new Set();
     this.selections = {};
     this.connectedUsers = new Set();
+    this.TOTAL_BOXES = 60;
   }
 
   async fetch(request) {
@@ -104,8 +105,6 @@ export class SecretSantaRoom {
   }
 
   async handleMessage(session, data) {
-    const TOTAL_BOXES = 60;
-
     switch (data.type) {
       case "user-identified":
         session.userName = data.userName;
@@ -120,7 +119,7 @@ export class SecretSantaRoom {
         const { boxNumber, userName } = data;
         
         // Validate input
-        if (typeof boxNumber !== 'number' || boxNumber < 1 || boxNumber > TOTAL_BOXES) {
+        if (typeof boxNumber !== 'number' || boxNumber < 1 || boxNumber > this.TOTAL_BOXES) {
           session.websocket.send(JSON.stringify({
             type: "selection-error",
             message: "Invalid box number",
@@ -164,7 +163,7 @@ export class SecretSantaRoom {
         break;
 
       case "unselect-box":
-        if (typeof data.boxNumber !== 'number' || data.boxNumber < 1 || data.boxNumber > TOTAL_BOXES) {
+        if (typeof data.boxNumber !== 'number' || data.boxNumber < 1 || data.boxNumber > this.TOTAL_BOXES) {
           return;
         }
 
@@ -192,7 +191,7 @@ export class SecretSantaRoom {
           const validatedSelections = {};
           for (const [boxNum, userName] of Object.entries(data.selections)) {
             const boxNumber = parseInt(boxNum, 10);
-            if (boxNumber >= 1 && boxNumber <= TOTAL_BOXES && 
+            if (boxNumber >= 1 && boxNumber <= this.TOTAL_BOXES && 
                 typeof userName === 'string' && userName.trim().length > 0) {
               validatedSelections[boxNumber] = userName.trim();
             }

@@ -14,9 +14,12 @@ const workerTemplate = fs.readFileSync(path.join(__dirname, 'worker.js'), 'utf8'
 // Escape backticks and ${} in the content
 function escapeContent(content) {
   return content
-    .replace(/\\/g, '\\\\')
-    .replace(/`/g, '\\`')
-    .replace(/\$\{/g, '\\${');
+    .replace(/\\/g, '\\\\')      // Escape backslashes first
+    .replace(/`/g, '\\`')         // Escape backticks
+    .replace(/\$\{/g, '\\${')     // Escape template literals
+    .replace(/\r\n/g, '\\n')      // Normalize Windows line endings
+    .replace(/\n/g, '\\n')        // Escape newlines
+    .replace(/\r/g, '\\r');       // Escape carriage returns
 }
 
 // Replace the placeholders with actual content
