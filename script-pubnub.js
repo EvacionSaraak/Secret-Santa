@@ -1,13 +1,13 @@
-// ⚠️ CONFIGURATION REQUIRED ⚠️
+// ⚠️ PubNub Configuration ⚠️
+// API keys configured for Secret Santa Box Picker
 // Get free API keys from: https://www.pubnub.com/
-// Sign up for free, create an app, and paste your keys below
 
 const PLACEHOLDER_PUBLISH_KEY = 'YOUR_PUBLISH_KEY_HERE';
 const PLACEHOLDER_SUBSCRIBE_KEY = 'YOUR_SUBSCRIBE_KEY_HERE';
 
 const PUBNUB_CONFIG = {
-    publishKey: PLACEHOLDER_PUBLISH_KEY,
-    subscribeKey: PLACEHOLDER_SUBSCRIBE_KEY,
+    publishKey: 'pub-c-bc8ca8d4-c2d6-4555-b49b-32980f96e47d',
+    subscribeKey: 'sub-c-a7b8c5bd-1a91-4221-987f-956168ba67fa',
     userId: 'user_' + Math.random().toString(36).substring(7)
 };
 
