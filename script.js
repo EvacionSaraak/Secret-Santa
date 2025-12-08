@@ -7,6 +7,7 @@ const TOTAL_BOXES = 60;
 let socket = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_DELAY = 30000; // 30 seconds max
+let isConnected = false;
 
 // DOM elements
 const nameModal = document.getElementById('nameModal');
@@ -19,6 +20,9 @@ const downloadBtn = document.getElementById('downloadBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const resetBtn = document.getElementById('resetBtn');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const connectionStatus = document.getElementById('connectionStatus');
+const connectionProgress = document.getElementById('connectionProgress');
 
 // Initialize
 function init() {
@@ -93,6 +97,11 @@ function generateBoxes() {
 }
 
 function handleBoxClick(boxNumber) {
+    // Don't allow selection if disconnected
+    if (!isConnected) {
+        return;
+    }
+    
     const owner = selections[boxNumber];
     
     if (owner === currentUserName) {
@@ -126,7 +135,7 @@ function updateBoxDisplay() {
         const owner = selections[i];
         
         // Reset classes
-        box.classList.remove('available', 'selected', 'taken');
+        box.classList.remove('available', 'selected', 'taken', 'disabled');
         
         if (owner === currentUserName) {
             box.classList.add('selected');
@@ -138,10 +147,18 @@ function updateBoxDisplay() {
             box.classList.add('available');
             ownerDiv.textContent = '';
         }
+        
+        // Disable all boxes if not connected
+        if (!isConnected) {
+            box.classList.add('disabled');
+        }
     }
 }
 
 function connectToServer() {
+    // Show loading overlay
+    showLoadingOverlay('Connecting to server...');
+    
     // Connect to WebSocket server
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
@@ -149,22 +166,34 @@ function connectToServer() {
     
     socket.onopen = () => {
         console.log('Connected to server');
+        isConnected = true;
         reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+        
         // Identify user to server
         socket.send(JSON.stringify({ 
             type: 'user-identified', 
             userName: currentUserName 
         }));
+        
         updateSyncStatus(true);
+        hideLoadingOverlay();
+        updateBoxDisplay(); // Update boxes to enable them
     };
     
     socket.onclose = () => {
         console.log('Disconnected from server');
+        isConnected = false;
         updateSyncStatus(false);
+        updateBoxDisplay(); // Update boxes to disable them
+        
         // Exponential backoff: delay = min(2^attempts * 1000, MAX_DELAY)
         const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, MAX_RECONNECT_DELAY);
         reconnectAttempts++;
+        const delaySeconds = Math.round(delay / 1000);
+        
         console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`);
+        showLoadingOverlay(`Reconnecting in ${delaySeconds}s... (attempt ${reconnectAttempts})`);
+        
         setTimeout(() => {
             if (currentUserName) {
                 connectToServer();
@@ -174,6 +203,8 @@ function connectToServer() {
     
     socket.onerror = (error) => {
         console.error('WebSocket error:', error);
+        isConnected = false;
+        showLoadingOverlay('Connection error. Retrying...');
     };
     
     socket.onmessage = (event) => {
@@ -273,6 +304,19 @@ function handleReset() {
     // Send reset to server
     if (socket && socket.readyState === WebSocket.OPEN) {
         socket.send(JSON.stringify({ type: 'reset-all' }));
+    }
+}
+
+function showLoadingOverlay(message) {
+    if (loadingOverlay && connectionStatus) {
+        connectionStatus.textContent = message;
+        loadingOverlay.classList.remove('hidden');
+    }
+}
+
+function hideLoadingOverlay() {
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
     }
 }
 

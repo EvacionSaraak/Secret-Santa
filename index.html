@@ -19,6 +19,17 @@
 
     <!-- Main Content -->
     <div id="mainContent" class="hidden">
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" class="loading-overlay hidden">
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <p id="connectionStatus" class="loading-message">Connecting to server...</p>
+                <div class="loading-progress">
+                    <div id="connectionProgress" class="loading-progress-bar"></div>
+                </div>
+            </div>
+        </div>
+
         <header class="header">
             <h1>🎅 Secret Santa Box Picker</h1>
             <p id="welcomeMessage">Welcome, <span id="currentUserName"></span>!</p>
