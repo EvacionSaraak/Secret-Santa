@@ -3,135 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secret Santa - Number Picker</title>
-    <!-- Custom CSS -->
+    <title>Secret Santa - Box Picker</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="container-fluid">
-        <!-- Header -->
+    <!-- Name Entry Modal (shown on first load) -->
+    <div id="nameModal" class="modal">
+        <div class="modal-content">
+            <h2>🎅 Welcome to Secret Santa!</h2>
+            <p>Please enter your name to continue:</p>
+            <input type="text" id="userNameInput" placeholder="Your Name" autofocus />
+            <button id="submitNameBtn" class="btn btn-primary">Continue</button>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="mainContent" class="hidden">
         <header class="header">
-            <h1>🎅 Secret Santa Number Picker</h1>
-            <p>Organize your Secret Santa event with ease!</p>
-            <div id="syncStatus" class="sync-status d-none">
+            <h1>🎅 Secret Santa Box Picker</h1>
+            <p id="welcomeMessage">Welcome, <span id="currentUserName"></span>!</p>
+            <div class="sync-status">
                 <span class="sync-indicator">●</span> Live updates enabled
             </div>
         </header>
 
-        <!-- Mode Toggle Buttons -->
-        <div class="mode-toggle">
-            <button id="switchToOrganizerBtn" class="btn btn-primary active" aria-pressed="true" role="button">Organizer Mode</button>
-            <button id="switchToParticipantBtn" class="btn btn-outline" aria-pressed="false" role="button">Participant Mode</button>
-        </div>
-
-        <!-- Organizer View -->
-        <div id="organizerView" class="row">
-            <div class="col-4">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Participants</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="input-group">
-                            <label for="nameInput" class="visually-hidden">Participant Name</label>
-                            <input type="text" id="nameInput" class="form-control" placeholder="Enter a name" aria-label="Participant name" />
-                            <button id="addNameBtn" class="btn btn-success">Add</button>
-                        </div>
-                        <div id="namesList" class="names-list"></div>
-                        <button id="initializeBtn" class="btn btn-primary btn-block" disabled>Initialize Event</button>
-                    </div>
-                </div>
+        <div class="container">
+            <div class="instructions">
+                <p>Click on any available box to claim it. Your name will appear on it!</p>
+                <p>Click your own box again to unselect it.</p>
             </div>
 
-            <div class="col-8">
-                <!-- Initial State -->
-                <div id="organizerInitialState" class="card">
-                    <div class="card-body text-center">
-                        <h2>Welcome Organizer!</h2>
-                        <p>Start by adding participant names to the left panel.</p>
-                        <p>You need at least 2 participants to begin.</p>
-                        <p>Once initialized, participants can select their numbers.</p>
-                    </div>
-                </div>
-
-                <!-- Active State -->
-                <div id="organizerActiveState" class="card d-none">
-                    <div class="card-header card-header-success">
-                        <h5>Event Active</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="alert alert-info">
-                            <strong>Participants can now select their numbers!</strong> Share this page with them and have them switch to Participant Mode.
-                        </div>
-                        
-                        <h5>Selection Status</h5>
-                        <div id="statusDisplay" class="mb-3"></div>
-                        
-                        <div class="btn-group">
-                            <button id="downloadBtn" class="btn btn-primary">Download Assignments (JSON)</button>
-                            <button id="resetBtn" class="btn btn-danger">Reset Event</button>
-                        </div>
-                        
-                        <div class="card mt-3">
-                            <div class="card-header card-header-warning">
-                                <h6>Current Assignments (Organizer View Only)</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="assignmentsPreview"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div id="boxGrid" class="box-grid">
+                <!-- Boxes will be generated by JavaScript -->
             </div>
-        </div>
 
-        <!-- Participant View -->
-        <div id="participantView" class="row d-none">
-            <div class="col-8 offset-2">
-                <div class="card">
-                    <div class="card-header">
-                        <h5>Select Your Number</h5>
-                    </div>
-                    <div class="card-body">
-                        <p>Choose your name, then pick an available number:</p>
-                        
-                        <div class="form-group">
-                            <label for="participantSelect">Your Name:</label>
-                            <select id="participantSelect" class="form-select">
-                                <option value="">-- Select Your Name --</option>
-                            </select>
-                        </div>
-                        
-                        <div id="numberSelectionArea" class="d-none">
-                            <h5>Available Numbers:</h5>
-                            <p class="text-muted">Pick a number (already selected numbers are hidden):</p>
-                            <div id="numbersGrid" class="numbers-grid"></div>
-                            <div id="confirmationMessage" class="alert alert-success d-none"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Upload Section -->
-        <div class="row mt-4">
-            <div class="col-6 offset-3">
-                <div class="card">
-                    <div class="card-header">
-                        <h6>Load Existing Event</h6>
-                    </div>
-                    <div class="card-body">
-                        <label for="uploadInput" class="form-label">Select JSON file to load event data</label>
-                        <input type="file" id="uploadInput" class="form-control" accept=".json" />
-                        <button id="uploadBtn" class="btn btn-secondary mt-2">Load JSON</button>
-                        <div id="uploadResult" class="alert mt-2 d-none"></div>
-                    </div>
-                </div>
+            <div class="actions">
+                <button id="downloadBtn" class="btn btn-secondary">Download JSON</button>
+                <button id="uploadBtn" class="btn btn-secondary">Upload JSON</button>
+                <input type="file" id="uploadInput" accept=".json" style="display: none;" />
+                <button id="resetBtn" class="btn btn-danger">Reset All</button>
             </div>
         </div>
     </div>
 
-    <!-- Custom JS -->
     <script src="script.js"></script>
 </body>
 </html>
