@@ -3,10 +3,8 @@ let currentUserName = '';
 let selections = {}; // { boxNumber: userName }
 const TOTAL_BOXES = 60;
 
-// Real-time sync
-let broadcastChannel = null;
-let syncInterval = null;
-const SYNC_INTERVAL_MS = 2000;
+// WebSocket connection
+let socket = null;
 
 // DOM elements
 const nameModal = document.getElementById('nameModal');
@@ -27,16 +25,11 @@ function init() {
     if (storedName) {
         currentUserName = storedName;
         showMainContent();
+        connectToServer();
     }
-    
-    // Load saved selections
-    loadSelections();
     
     // Setup event listeners
     setupEventListeners();
-    
-    // Initialize real-time sync
-    initializeSync();
     
     // Generate boxes
     generateBoxes();
@@ -69,6 +62,7 @@ function showMainContent() {
     nameModal.classList.add('hidden');
     mainContent.classList.remove('hidden');
     currentUserNameSpan.textContent = currentUserName;
+    connectToServer();
 }
 
 function generateBoxes() {
@@ -101,14 +95,14 @@ function handleBoxClick(boxNumber) {
     
     if (owner === currentUserName) {
         // User is unselecting their own box
-        delete selections[boxNumber];
-        saveSelections();
-        updateBoxDisplay();
+        if (socket && socket.connected) {
+            socket.emit('unselect-box', { boxNumber, userName: currentUserName });
+        }
     } else if (!owner) {
-        // Box is available
-        selections[boxNumber] = currentUserName;
-        saveSelections();
-        updateBoxDisplay();
+        // Box is available - select it (server will handle unsetting previous box)
+        if (socket && socket.connected) {
+            socket.emit('select-box', { boxNumber, userName: currentUserName });
+        }
     } else {
         // Box is taken by someone else
         alert(`This box is already selected by ${owner}`);
@@ -137,62 +131,56 @@ function updateBoxDisplay() {
     }
 }
 
-function saveSelections() {
-    const data = {
-        selections: selections,
-        lastUpdated: new Date().toISOString()
-    };
-    localStorage.setItem('secretSantaSelections', JSON.stringify(data));
+function connectToServer() {
+    // Connect to Socket.IO server
+    socket = io();
     
-    // Broadcast update to other tabs
-    if (broadcastChannel) {
-        try {
-            broadcastChannel.postMessage({ type: 'selections-updated' });
-        } catch (e) {
-            console.warn('Failed to broadcast update:', e);
-        }
-    }
-}
-
-function loadSelections() {
-    const data = localStorage.getItem('secretSantaSelections');
-    if (data) {
-        try {
-            const parsed = JSON.parse(data);
-            if (parsed.selections && typeof parsed.selections === 'object') {
-                selections = parsed.selections;
-                updateBoxDisplay();
-            }
-        } catch (e) {
-            console.error('Error loading selections:', e);
-        }
-    }
-}
-
-function initializeSync() {
-    // BroadcastChannel for cross-tab communication
-    try {
-        broadcastChannel = new BroadcastChannel('secret-santa-boxes');
-        broadcastChannel.onmessage = (event) => {
-            if (event.data.type === 'selections-updated') {
-                loadSelections();
-            }
-        };
-    } catch (e) {
-        console.warn('BroadcastChannel not supported:', e);
-    }
-    
-    // Storage event for cross-window updates
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'secretSantaSelections' && e.newValue) {
-            loadSelections();
-        }
+    socket.on('connect', () => {
+        console.log('Connected to server');
+        // Identify user to server
+        socket.emit('user-identified', currentUserName);
+        updateSyncStatus(true);
     });
     
-    // Periodic sync
-    syncInterval = setInterval(() => {
-        loadSelections();
-    }, SYNC_INTERVAL_MS);
+    socket.on('disconnect', () => {
+        console.log('Disconnected from server');
+        updateSyncStatus(false);
+    });
+    
+    // Receive initial state from server
+    socket.on('initial-state', (data) => {
+        selections = data.selections;
+        updateBoxDisplay();
+    });
+    
+    // Receive real-time updates
+    socket.on('selections-updated', (data) => {
+        selections = data.selections;
+        updateBoxDisplay();
+    });
+    
+    // Handle selection errors
+    socket.on('selection-error', (data) => {
+        alert(data.message);
+    });
+    
+    // Update connected users count
+    socket.on('users-count', (count) => {
+        console.log(`Connected users: ${count}`);
+    });
+}
+
+function updateSyncStatus(connected) {
+    const syncIndicator = document.querySelector('.sync-indicator');
+    const syncStatus = document.querySelector('.sync-status');
+    
+    if (connected) {
+        syncIndicator.style.color = '#4ade80';
+        syncStatus.innerHTML = '<span class="sync-indicator">●</span> Live updates enabled';
+    } else {
+        syncIndicator.style.color = '#f87171';
+        syncStatus.innerHTML = '<span class="sync-indicator">●</span> Disconnected - trying to reconnect...';
+    }
 }
 
 function downloadJSON() {
@@ -225,10 +213,11 @@ function handleUpload(event) {
             const data = JSON.parse(e.target.result);
             
             if (data.selections && typeof data.selections === 'object') {
-                selections = data.selections;
-                saveSelections();
-                updateBoxDisplay();
-                alert('Successfully loaded selections!');
+                // Send to server to update all clients
+                if (socket && socket.connected) {
+                    socket.emit('upload-selections', data.selections);
+                    alert('Successfully loaded selections!');
+                }
             } else {
                 alert('Invalid file format');
             }
@@ -247,9 +236,10 @@ function handleReset() {
         return;
     }
     
-    selections = {};
-    saveSelections();
-    updateBoxDisplay();
+    // Send reset to server
+    if (socket && socket.connected) {
+        socket.emit('reset-all');
+    }
 }
 
 // Start the application

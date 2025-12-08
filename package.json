@@ -1,0 +1,17 @@
+{
+  "name": "secret-santa-box-picker",
+  "version": "1.0.0",
+  "description": "Real-time Secret Santa box picker with live updates",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["secret-santa", "websocket", "real-time"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
+  }
+}

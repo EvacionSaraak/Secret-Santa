@@ -30,7 +30,8 @@
         <div class="container">
             <div class="instructions">
                 <p>Click on any available box to claim it. Your name will appear on it!</p>
-                <p>Click your own box again to unselect it.</p>
+                <p>You can only select ONE box. Selecting a new box will automatically unselect your previous choice.</p>
+                <p>Click your own box to unselect it.</p>
             </div>
 
             <div id="boxGrid" class="box-grid">
@@ -46,6 +47,7 @@
         </div>
     </div>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
