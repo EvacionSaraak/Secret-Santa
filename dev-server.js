@@ -152,8 +152,9 @@ wss.on('connection', (ws) => {
 
 function broadcast(message) {
   const msg = JSON.stringify(message);
+  const WebSocket = require('ws');
   wss.clients.forEach((client) => {
-    if (client.readyState === 1) { // OPEN
+    if (client.readyState === WebSocket.OPEN) {
       client.send(msg);
     }
   });
