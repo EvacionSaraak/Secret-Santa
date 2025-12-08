@@ -8,7 +8,7 @@ A real-time Secret Santa box picker with live updates across all users.
 - **One box per user**: Each user can only select one box at a time
 - **Live updates**: Changes are reflected instantly on all connected users' screens
 - **60 boxes**: Pick from 60 different boxes
-- **Persistent selections**: Selections are maintained with Cloudflare Durable Objects
+- **Multiple deployment options**: GitHub Pages, Local, or Cloudflare Workers
 
 ## Preview
 
@@ -16,7 +16,20 @@ The application features a beautiful gradient interface where users can see all 
 
 ![Multi-user real-time updates](https://github.com/user-attachments/assets/51f7f485-2ada-4c64-bf7d-32dbeb97fe2d)
 
-## Quick Start (Local Development)
+## Quick Start Options
+
+### Option 1: GitHub Pages (No npm required!)
+
+Perfect if you want to deploy without installing anything:
+
+1. **Get free PubNub API keys**: [https://www.pubnub.com/](https://www.pubnub.com/)
+2. **Update** `script-pubnub.js` with your keys
+3. **Enable GitHub Pages** in repository settings
+4. **Done!** Your app is live at `https://[username].github.io/[repository]/`
+
+📖 **Detailed guide**: See [GITHUB_PAGES_SETUP.md](GITHUB_PAGES_SETUP.md)
+
+### Option 2: Local Development
 
 For quick local testing with WebSocket support:
 
@@ -37,44 +50,28 @@ http://localhost:3000
 
 4. Open multiple browser tabs/windows to test multi-user functionality!
 
-**Note:** The local server (`dev:local`) uses a simple Node.js WebSocket server for testing. For production deployment, use Cloudflare Workers (see below).
+**Note:** The local server (`dev:local`) uses a simple Node.js WebSocket server for testing. For production deployment, use GitHub Pages or Cloudflare Workers.
 
-## Deployment
+### Option 3: Cloudflare Workers (Production)
 
-### Cloudflare Workers (Production)
+For persistent state and global edge deployment:
 
-This application is designed to run on Cloudflare Workers with Durable Objects for real-time WebSocket support.
-
-1. Install Wrangler CLI:
 ```bash
 npm install -g wrangler
-```
-
-2. Login to Cloudflare:
-```bash
 wrangler login
-```
-
-3. Deploy to Cloudflare Workers:
-```bash
+npm run build
 npm run deploy
 ```
 
-The application will be deployed with:
-- WebSocket support via Durable Objects
-- Global edge network for low latency
-- Automatic scaling
-- Persistent state storage
+See [DEPLOYMENT.md](DEPLOYMENT.md) for complete instructions.
 
-### Local Development with Wrangler
+## Deployment Comparison
 
-To test with Cloudflare Workers locally:
-
-```bash
-npm run dev
-```
-
-This uses Wrangler's local development mode which simulates the Cloudflare Workers environment.
+| Method | Setup | npm Required | Persistent State | Best For |
+|--------|-------|--------------|------------------|----------|
+| **GitHub Pages + PubNub** | ⭐ Easy | ❌ No | ❌ No | Quick sharing, no setup |
+| **Local Development** | ⭐⭐ Moderate | ✅ Yes | ❌ No | Testing |
+| **Cloudflare Workers** | ⭐⭐⭐ Advanced | ✅ Yes | ✅ Yes | Production |
 
 ## How to Use
 
@@ -93,19 +90,26 @@ This uses Wrangler's local development mode which simulates the Cloudflare Worke
 ## Technology
 
 - **Frontend**: HTML, CSS, JavaScript
-- **Backend**: Cloudflare Workers (production) or Node.js (development)
-- **Real-time**: WebSocket with Durable Objects (production) or ws package (development)
-- **Storage**: Durable Objects persistent storage (production) or in-memory (development)
+- **Real-time Options**:
+  - PubNub (for GitHub Pages)
+  - WebSocket with Node.js (for local dev)
+  - Durable Objects (for Cloudflare Workers)
 
 ## Troubleshooting
 
 ### "Unable to connect" error
 
-If you see a connection error:
+**For GitHub Pages:**
+1. Make sure you've updated your PubNub keys in `script-pubnub.js`
+2. Check browser console for error messages
+3. Verify GitHub Pages is enabled in repository settings
 
-1. **For local development**: Make sure you're running `npm run dev:local` (not just opening the HTML file)
-2. **For Cloudflare deployment**: Run `npm run dev` or `npm run deploy` first
-3. **Check the console**: Open browser DevTools to see detailed error messages
+**For local development:**
+1. Make sure you're running `npm run dev:local`
+2. Don't just open the HTML file directly
+
+**For Cloudflare:**
+1. Run `npm run dev` or `npm run deploy` first
 
 ### Port already in use
 
