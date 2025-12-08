@@ -16,9 +16,32 @@ The application features a beautiful gradient interface where users can see all 
 
 ![Multi-user real-time updates](https://github.com/user-attachments/assets/51f7f485-2ada-4c64-bf7d-32dbeb97fe2d)
 
+## Quick Start (Local Development)
+
+For quick local testing with WebSocket support:
+
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Run the local development server:
+```bash
+npm run dev:local
+```
+
+3. Open your browser to:
+```
+http://localhost:3000
+```
+
+4. Open multiple browser tabs/windows to test multi-user functionality!
+
+**Note:** The local server (`dev:local`) uses a simple Node.js WebSocket server for testing. For production deployment, use Cloudflare Workers (see below).
+
 ## Deployment
 
-### Cloudflare Workers (Recommended)
+### Cloudflare Workers (Production)
 
 This application is designed to run on Cloudflare Workers with Durable Objects for real-time WebSocket support.
 
@@ -34,7 +57,7 @@ wrangler login
 
 3. Deploy to Cloudflare Workers:
 ```bash
-wrangler deploy
+npm run deploy
 ```
 
 The application will be deployed with:
@@ -43,15 +66,15 @@ The application will be deployed with:
 - Automatic scaling
 - Persistent state storage
 
-### Local Development
+### Local Development with Wrangler
 
-For local testing with Cloudflare Workers:
+To test with Cloudflare Workers locally:
 
 ```bash
-wrangler dev
+npm run dev
 ```
 
-Then open your browser to the URL provided by Wrangler.
+This uses Wrangler's local development mode which simulates the Cloudflare Workers environment.
 
 ## How to Use
 
@@ -70,8 +93,26 @@ Then open your browser to the URL provided by Wrangler.
 ## Technology
 
 - **Frontend**: HTML, CSS, JavaScript
-- **Backend**: Cloudflare Workers
-- **Real-time**: WebSocket with Durable Objects
-- **Storage**: Durable Objects persistent storage
+- **Backend**: Cloudflare Workers (production) or Node.js (development)
+- **Real-time**: WebSocket with Durable Objects (production) or ws package (development)
+- **Storage**: Durable Objects persistent storage (production) or in-memory (development)
+
+## Troubleshooting
+
+### "Unable to connect" error
+
+If you see a connection error:
+
+1. **For local development**: Make sure you're running `npm run dev:local` (not just opening the HTML file)
+2. **For Cloudflare deployment**: Run `npm run dev` or `npm run deploy` first
+3. **Check the console**: Open browser DevTools to see detailed error messages
+
+### Port already in use
+
+If port 3000 is already in use, you can change it:
+```bash
+PORT=8080 npm run dev:local
+```
+
 
 

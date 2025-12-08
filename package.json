@@ -6,12 +6,19 @@
   "scripts": {
     "build": "mkdir -p dist && node build.js",
     "deploy": "npm run build && wrangler deploy",
-    "dev": "npm run build && wrangler dev"
+    "dev": "npm run build && wrangler dev",
+    "dev:local": "node dev-server.js"
   },
-  "keywords": ["secret-santa", "websocket", "real-time", "cloudflare-workers"],
+  "keywords": [
+    "secret-santa",
+    "websocket",
+    "real-time",
+    "cloudflare-workers"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
-    "wrangler": "^3.0.0"
+    "wrangler": "^3.0.0",
+    "ws": "^8.18.3"
   }
 }
