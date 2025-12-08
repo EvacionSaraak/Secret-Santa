@@ -13,7 +13,7 @@
 ### 2. Configure the Application
 
 1. Open `script-pubnub.js` in your code editor
-2. Find lines 3-7 (near the top):
+2. Find lines 4-8 (near the top):
    ```javascript
    const PUBNUB_CONFIG = {
        publishKey: 'YOUR_PUBLISH_KEY_HERE',

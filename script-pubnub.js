@@ -1,15 +1,19 @@
 // ⚠️ CONFIGURATION REQUIRED ⚠️
 // Get free API keys from: https://www.pubnub.com/
 // Sign up for free, create an app, and paste your keys below
+
+const PLACEHOLDER_PUBLISH_KEY = 'YOUR_PUBLISH_KEY_HERE';
+const PLACEHOLDER_SUBSCRIBE_KEY = 'YOUR_SUBSCRIBE_KEY_HERE';
+
 const PUBNUB_CONFIG = {
-    publishKey: 'YOUR_PUBLISH_KEY_HERE',
-    subscribeKey: 'YOUR_SUBSCRIBE_KEY_HERE',
+    publishKey: PLACEHOLDER_PUBLISH_KEY,
+    subscribeKey: PLACEHOLDER_SUBSCRIBE_KEY,
     userId: 'user_' + Math.random().toString(36).substring(7)
 };
 
 // Check if keys are configured
-if (PUBNUB_CONFIG.publishKey === 'YOUR_PUBLISH_KEY_HERE' || 
-    PUBNUB_CONFIG.subscribeKey === 'YOUR_SUBSCRIBE_KEY_HERE') {
+if (PUBNUB_CONFIG.publishKey === PLACEHOLDER_PUBLISH_KEY || 
+    PUBNUB_CONFIG.subscribeKey === PLACEHOLDER_SUBSCRIBE_KEY) {
     console.warn('⚠️ PubNub keys not configured! Please update script-pubnub.js with your keys.');
     console.warn('Get free keys at: https://www.pubnub.com/');
 }
@@ -35,6 +39,8 @@ const uploadInput = document.getElementById('uploadInput');
 const resetBtn = document.getElementById('resetBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const connectionStatus = document.getElementById('connectionStatus');
+const syncIndicator = document.querySelector('.sync-indicator');
+const syncStatus = document.querySelector('.sync-status');
 
 // Initialize
 function init() {
@@ -249,7 +255,7 @@ function handleMessage(message) {
             if (Object.keys(selections).length > 0) {
                 publishMessage({
                     type: 'state-response',
-                    selections: selections
+                    selections
                 });
             }
             break;
@@ -287,8 +293,7 @@ function publishMessage(message) {
 }
 
 function updateSyncStatus(connected) {
-    const syncIndicator = document.querySelector('.sync-indicator');
-    const syncStatus = document.querySelector('.sync-status');
+    if (!syncIndicator || !syncStatus) return;
     
     if (connected) {
         syncIndicator.style.color = '#4ade80';
