@@ -95,13 +95,21 @@ function handleBoxClick(boxNumber) {
     
     if (owner === currentUserName) {
         // User is unselecting their own box
-        if (socket && socket.connected) {
-            socket.emit('unselect-box', { boxNumber, userName: currentUserName });
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ 
+                type: 'unselect-box', 
+                boxNumber, 
+                userName: currentUserName 
+            }));
         }
     } else if (!owner) {
         // Box is available - select it (server will handle unsetting previous box)
-        if (socket && socket.connected) {
-            socket.emit('select-box', { boxNumber, userName: currentUserName });
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ 
+                type: 'select-box', 
+                boxNumber, 
+                userName: currentUserName 
+            }));
         }
     } else {
         // Box is taken by someone else
@@ -132,42 +140,59 @@ function updateBoxDisplay() {
 }
 
 function connectToServer() {
-    // Connect to Socket.IO server
-    socket = io();
+    // Connect to WebSocket server
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    socket = new WebSocket(wsUrl);
     
-    socket.on('connect', () => {
+    socket.onopen = () => {
         console.log('Connected to server');
         // Identify user to server
-        socket.emit('user-identified', currentUserName);
+        socket.send(JSON.stringify({ 
+            type: 'user-identified', 
+            userName: currentUserName 
+        }));
         updateSyncStatus(true);
-    });
+    };
     
-    socket.on('disconnect', () => {
+    socket.onclose = () => {
         console.log('Disconnected from server');
         updateSyncStatus(false);
-    });
+        // Attempt to reconnect after 3 seconds
+        setTimeout(() => {
+            if (currentUserName) {
+                connectToServer();
+            }
+        }, 3000);
+    };
     
-    // Receive initial state from server
-    socket.on('initial-state', (data) => {
-        selections = data.selections;
-        updateBoxDisplay();
-    });
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+    };
     
-    // Receive real-time updates
-    socket.on('selections-updated', (data) => {
-        selections = data.selections;
-        updateBoxDisplay();
-    });
-    
-    // Handle selection errors
-    socket.on('selection-error', (data) => {
-        alert(data.message);
-    });
-    
-    // Update connected users count
-    socket.on('users-count', (count) => {
-        console.log(`Connected users: ${count}`);
-    });
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+            case 'initial-state':
+                selections = data.selections;
+                updateBoxDisplay();
+                break;
+            
+            case 'selections-updated':
+                selections = data.selections;
+                updateBoxDisplay();
+                break;
+            
+            case 'selection-error':
+                alert(data.message);
+                break;
+            
+            case 'users-count':
+                console.log(`Connected users: ${data.count}`);
+                break;
+        }
+    };
 }
 
 function updateSyncStatus(connected) {
@@ -214,8 +239,11 @@ function handleUpload(event) {
             
             if (data.selections && typeof data.selections === 'object') {
                 // Send to server to update all clients
-                if (socket && socket.connected) {
-                    socket.emit('upload-selections', data.selections);
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ 
+                        type: 'upload-selections', 
+                        selections: data.selections 
+                    }));
                     alert('Successfully loaded selections!');
                 }
             } else {
@@ -237,8 +265,8 @@ function handleReset() {
     }
     
     // Send reset to server
-    if (socket && socket.connected) {
-        socket.emit('reset-all');
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'reset-all' }));
     }
 }
 

@@ -1,31 +1,57 @@
 # Secret-Santa
 A real-time Secret Santa box picker with live updates across all users.
 
+![Secret Santa Box Picker Preview](https://github.com/user-attachments/assets/7f9685f9-a090-4f55-ab1f-9d8c449fc547)
+
 ## Features
 - **Real-time synchronization**: See updates immediately when anyone selects a box
 - **One box per user**: Each user can only select one box at a time
 - **Live updates**: Changes are reflected instantly on all connected users' screens
 - **60 boxes**: Pick from 60 different boxes
-- **Persistent selections**: Selections are maintained on the server
+- **Persistent selections**: Selections are maintained with Cloudflare Durable Objects
 
-## Setup
+## Preview
 
-1. Install dependencies:
+The application features a beautiful gradient interface where users can see all 60 boxes in a grid layout. Selected boxes are highlighted in purple with the user's name, while available boxes remain light blue.
+
+![Multi-user real-time updates](https://github.com/user-attachments/assets/51f7f485-2ada-4c64-bf7d-32dbeb97fe2d)
+
+## Deployment
+
+### Cloudflare Workers (Recommended)
+
+This application is designed to run on Cloudflare Workers with Durable Objects for real-time WebSocket support.
+
+1. Install Wrangler CLI:
 ```bash
-npm install
+npm install -g wrangler
 ```
 
-2. Start the server:
+2. Login to Cloudflare:
 ```bash
-npm start
+wrangler login
 ```
 
-3. Open your browser to:
-```
-http://localhost:3000
+3. Deploy to Cloudflare Workers:
+```bash
+wrangler deploy
 ```
 
-4. Enter your name and start selecting boxes!
+The application will be deployed with:
+- WebSocket support via Durable Objects
+- Global edge network for low latency
+- Automatic scaling
+- Persistent state storage
+
+### Local Development
+
+For local testing with Cloudflare Workers:
+
+```bash
+wrangler dev
+```
+
+Then open your browser to the URL provided by Wrangler.
 
 ## How to Use
 
@@ -44,6 +70,8 @@ http://localhost:3000
 ## Technology
 
 - **Frontend**: HTML, CSS, JavaScript
-- **Backend**: Node.js, Express
-- **Real-time**: Socket.IO for WebSocket communication
+- **Backend**: Cloudflare Workers
+- **Real-time**: WebSocket with Durable Objects
+- **Storage**: Durable Objects persistent storage
+
 
