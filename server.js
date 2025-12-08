@@ -7,7 +7,7 @@ const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : "*",
     methods: ["GET", "POST"]
   }
 });
@@ -41,6 +41,16 @@ io.on('connection', (socket) => {
   
   // Handle box selection
   socket.on('select-box', ({ boxNumber, userName }) => {
+    // Validate input
+    if (typeof boxNumber !== 'number' || boxNumber < 1 || boxNumber > TOTAL_BOXES) {
+      socket.emit('selection-error', { message: 'Invalid box number', boxNumber });
+      return;
+    }
+    if (typeof userName !== 'string' || userName.trim().length === 0) {
+      socket.emit('selection-error', { message: 'Invalid user name', boxNumber });
+      return;
+    }
+    
     // Find and remove any previous selection by this user (enforce one box per user)
     for (let box in selections) {
       if (selections[box] === userName) {
@@ -67,6 +77,11 @@ io.on('connection', (socket) => {
   
   // Handle box unselection
   socket.on('unselect-box', ({ boxNumber, userName }) => {
+    // Validate input
+    if (typeof boxNumber !== 'number' || boxNumber < 1 || boxNumber > TOTAL_BOXES) {
+      return;
+    }
+    
     const currentOwner = selections[boxNumber];
     
     if (currentOwner === userName) {
@@ -78,19 +93,30 @@ io.on('connection', (socket) => {
     }
   });
   
-  // Handle reset request
+  // Handle reset request - with confirmation from user
   socket.on('reset-all', () => {
+    // Clear all selections
     selections = {};
     io.emit('selections-updated', { selections });
-    console.log('All selections reset');
+    console.log('All selections reset by user');
   });
   
   // Handle upload (import selections)
   socket.on('upload-selections', (newSelections) => {
     if (newSelections && typeof newSelections === 'object') {
-      selections = newSelections;
+      // Validate the selections object
+      const validatedSelections = {};
+      for (const [boxNum, userName] of Object.entries(newSelections)) {
+        const boxNumber = parseInt(boxNum, 10);
+        // Only accept valid box numbers and non-empty usernames
+        if (boxNumber >= 1 && boxNumber <= TOTAL_BOXES && 
+            typeof userName === 'string' && userName.trim().length > 0) {
+          validatedSelections[boxNumber] = userName.trim();
+        }
+      }
+      selections = validatedSelections;
       io.emit('selections-updated', { selections });
-      console.log('Selections imported from upload');
+      console.log('Selections imported from upload (validated)');
     }
   });
   
