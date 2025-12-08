@@ -6,8 +6,8 @@ const PLACEHOLDER_PUBLISH_KEY = 'YOUR_PUBLISH_KEY_HERE';
 const PLACEHOLDER_SUBSCRIBE_KEY = 'YOUR_SUBSCRIBE_KEY_HERE';
 
 const PUBNUB_CONFIG = {
-    publishKey: 'pub-c-bc8ca8d4-c2d6-4555-b49b-32980f96e47d',
-    subscribeKey: 'sub-c-a7b8c5bd-1a91-4221-987f-956168ba67fa',
+    publishKey: 'pub-c-a582deb0-1131-41f5-9701-904d7ff5f864',
+    subscribeKey: 'sub-c-e0c62c1e-5f36-4373-8765-b00f28f5ab1b',
     userId: 'user_' + Math.random().toString(36).substring(7)
 };
 
@@ -64,6 +64,13 @@ function setupEventListeners() {
     userNameInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleNameSubmit();
     });
+    
+    // Change name button
+    const changeNameBtn = document.getElementById('changeNameBtn');
+    if (changeNameBtn) {
+        changeNameBtn.addEventListener('click', handleChangeName);
+    }
+    
     downloadBtn.addEventListener('click', downloadJSON);
     uploadBtn.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleUpload);
@@ -87,6 +94,44 @@ function showMainContent() {
     mainContent.classList.remove('hidden');
     currentUserNameSpan.textContent = currentUserName;
     connectToPubNub();
+}
+
+function handleChangeName() {
+    const newName = prompt('Enter your new name:', currentUserName);
+    if (!newName || newName.trim() === '') {
+        return;
+    }
+    
+    const trimmedName = newName.trim();
+    if (trimmedName === currentUserName) {
+        return; // No change
+    }
+    
+    const oldName = currentUserName;
+    currentUserName = trimmedName;
+    
+    // Update localStorage
+    localStorage.setItem('secretSantaUserName', currentUserName);
+    
+    // Update display
+    currentUserNameSpan.textContent = currentUserName;
+    
+    // Update all boxes that had the old name
+    for (let boxNumber in selections) {
+        if (selections[boxNumber] === oldName) {
+            selections[boxNumber] = currentUserName;
+        }
+    }
+    
+    // Broadcast name change to all clients
+    publishMessage({
+        type: 'name-change',
+        oldName: oldName,
+        newName: currentUserName
+    });
+    
+    // Update local display
+    updateBoxDisplay();
 }
 
 function generateBoxes() {
@@ -247,6 +292,16 @@ function handleMessage(message) {
         
         case 'upload-selections':
             selections = message.selections || {};
+            updateBoxDisplay();
+            break;
+        
+        case 'name-change':
+            // Update all boxes that had the old name with the new name
+            for (let boxNumber in selections) {
+                if (selections[boxNumber] === message.oldName) {
+                    selections[boxNumber] = message.newName;
+                }
+            }
             updateBoxDisplay();
             break;
         
