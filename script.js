@@ -22,7 +22,6 @@ const uploadInput = document.getElementById('uploadInput');
 const resetBtn = document.getElementById('resetBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const connectionStatus = document.getElementById('connectionStatus');
-const connectionProgress = document.getElementById('connectionProgress');
 
 // Initialize
 function init() {
@@ -308,9 +307,11 @@ function handleReset() {
 }
 
 function showLoadingOverlay(message) {
-    if (loadingOverlay && connectionStatus) {
-        connectionStatus.textContent = message;
+    if (loadingOverlay) {
         loadingOverlay.classList.remove('hidden');
+    }
+    if (connectionStatus) {
+        connectionStatus.textContent = message;
     }
 }
 
