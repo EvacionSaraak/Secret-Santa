@@ -212,6 +212,7 @@ function setupAutocompleteForInput(input) {
         }
         
         // Find the best matching participant (starting with the input)
+        // Note: Uses startsWith() for more relevant preview (only shows completion for prefix matches)
         const matches = participants.filter(name => 
             name.toLowerCase().startsWith(inputValue.toLowerCase())
         );
@@ -235,6 +236,7 @@ function setupAutocompleteForInput(input) {
         currentFocus = -1;
         
         // Find matching participants
+        // Note: Uses includes() for broader search in dropdown (shows any partial matches)
         const matches = participants.filter(name => 
             name.toLowerCase().includes(val.toLowerCase())
         );
@@ -265,12 +267,12 @@ function setupAutocompleteForInput(input) {
         let items = document.getElementById(listId);
         if (items) items = items.getElementsByClassName('autocomplete-item');
         
-        if (e.keyCode === 9 && previewDiv.textContent) { // Tab key - accept preview
+        if (e.key === 'Tab' && previewDiv.textContent) { // Tab key - accept preview
             e.preventDefault();
             input.value = previewDiv.textContent;
             updatePreview('');
             closeList(input);
-        } else if (e.keyCode === 39 && previewDiv.textContent) { // Right arrow - accept preview
+        } else if (e.key === 'ArrowRight' && previewDiv.textContent) { // Right arrow - accept preview
             const cursorAtEnd = input.selectionStart === input.value.length;
             if (cursorAtEnd) {
                 e.preventDefault();
@@ -278,13 +280,13 @@ function setupAutocompleteForInput(input) {
                 updatePreview('');
                 closeList(input);
             }
-        } else if (e.keyCode === 40) { // Down arrow
+        } else if (e.key === 'ArrowDown') { // Down arrow
             currentFocus++;
             addActive(items);
-        } else if (e.keyCode === 38) { // Up arrow
+        } else if (e.key === 'ArrowUp') { // Up arrow
             currentFocus--;
             addActive(items);
-        } else if (e.keyCode === 13) { // Enter
+        } else if (e.key === 'Enter') { // Enter
             e.preventDefault();
             if (currentFocus > -1 && items) {
                 items[currentFocus].click();
