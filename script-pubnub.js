@@ -373,15 +373,16 @@ function showMainContent() {
 }
 
 function updateAdminControls() {
-    const actionsDiv = document.querySelector('.actions');
+    const adminActionsDiv = document.querySelector('.admin-actions');
     const adminLoginButtons = document.querySelectorAll('.btn-admin-login');
     const adminLogoutBtn = document.getElementById('adminLogoutBtn');
     
-    if (actionsDiv) {
+    // Show/hide admin-only actions (Download JSON, Upload JSON, Clear All Users)
+    if (adminActionsDiv) {
         if (isAdmin) {
-            actionsDiv.style.display = 'block';
+            adminActionsDiv.style.display = 'block';
         } else {
-            actionsDiv.style.display = 'none';
+            adminActionsDiv.style.display = 'none';
         }
     }
     
