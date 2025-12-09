@@ -3,10 +3,11 @@ let currentUserName = '';
 let selections = {}; // { boxNumber: userName }
 const TOTAL_BOXES = 60;
 
-// Real-time sync
-let broadcastChannel = null;
-let syncInterval = null;
-const SYNC_INTERVAL_MS = 2000;
+// WebSocket connection
+let socket = null;
+let reconnectAttempts = 0;
+const MAX_RECONNECT_DELAY = 30000; // 30 seconds max
+let isConnected = false;
 
 // DOM elements
 const nameModal = document.getElementById('nameModal');
@@ -19,6 +20,8 @@ const downloadBtn = document.getElementById('downloadBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const resetBtn = document.getElementById('resetBtn');
+const loadingOverlay = document.getElementById('loadingOverlay');
+const connectionStatus = document.getElementById('connectionStatus');
 
 // Initialize
 function init() {
@@ -27,16 +30,11 @@ function init() {
     if (storedName) {
         currentUserName = storedName;
         showMainContent();
+        connectToServer();
     }
-    
-    // Load saved selections
-    loadSelections();
     
     // Setup event listeners
     setupEventListeners();
-    
-    // Initialize real-time sync
-    initializeSync();
     
     // Generate boxes
     generateBoxes();
@@ -69,6 +67,7 @@ function showMainContent() {
     nameModal.classList.add('hidden');
     mainContent.classList.remove('hidden');
     currentUserNameSpan.textContent = currentUserName;
+    connectToServer();
 }
 
 function generateBoxes() {
@@ -97,18 +96,31 @@ function generateBoxes() {
 }
 
 function handleBoxClick(boxNumber) {
+    // Don't allow selection if disconnected
+    if (!isConnected) {
+        return;
+    }
+    
     const owner = selections[boxNumber];
     
     if (owner === currentUserName) {
         // User is unselecting their own box
-        delete selections[boxNumber];
-        saveSelections();
-        updateBoxDisplay();
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ 
+                type: 'unselect-box', 
+                boxNumber, 
+                userName: currentUserName 
+            }));
+        }
     } else if (!owner) {
-        // Box is available
-        selections[boxNumber] = currentUserName;
-        saveSelections();
-        updateBoxDisplay();
+        // Box is available - select it (server will handle unsetting previous box)
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify({ 
+                type: 'select-box', 
+                boxNumber, 
+                userName: currentUserName 
+            }));
+        }
     } else {
         // Box is taken by someone else
         alert(`This box is already selected by ${owner}`);
@@ -122,7 +134,7 @@ function updateBoxDisplay() {
         const owner = selections[i];
         
         // Reset classes
-        box.classList.remove('available', 'selected', 'taken');
+        box.classList.remove('available', 'selected', 'taken', 'disabled');
         
         if (owner === currentUserName) {
             box.classList.add('selected');
@@ -134,65 +146,102 @@ function updateBoxDisplay() {
             box.classList.add('available');
             ownerDiv.textContent = '';
         }
+        
+        // Disable all boxes if not connected
+        if (!isConnected) {
+            box.classList.add('disabled');
+        }
     }
 }
 
-function saveSelections() {
-    const data = {
-        selections: selections,
-        lastUpdated: new Date().toISOString()
+function connectToServer() {
+    // Show loading overlay
+    showLoadingOverlay('Connecting to server...');
+    
+    // Connect to WebSocket server
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    socket = new WebSocket(wsUrl);
+    
+    socket.onopen = () => {
+        console.log('Connected to server');
+        isConnected = true;
+        reconnectAttempts = 0; // Reset reconnect attempts on successful connection
+        
+        // Identify user to server
+        socket.send(JSON.stringify({ 
+            type: 'user-identified', 
+            userName: currentUserName 
+        }));
+        
+        updateSyncStatus(true);
+        hideLoadingOverlay();
+        updateBoxDisplay(); // Update boxes to enable them
     };
-    localStorage.setItem('secretSantaSelections', JSON.stringify(data));
     
-    // Broadcast update to other tabs
-    if (broadcastChannel) {
-        try {
-            broadcastChannel.postMessage({ type: 'selections-updated' });
-        } catch (e) {
-            console.warn('Failed to broadcast update:', e);
-        }
-    }
-}
-
-function loadSelections() {
-    const data = localStorage.getItem('secretSantaSelections');
-    if (data) {
-        try {
-            const parsed = JSON.parse(data);
-            if (parsed.selections && typeof parsed.selections === 'object') {
-                selections = parsed.selections;
+    socket.onclose = () => {
+        console.log('Disconnected from server');
+        isConnected = false;
+        updateSyncStatus(false);
+        updateBoxDisplay(); // Update boxes to disable them
+        
+        // Exponential backoff: delay = min(2^attempts * 1000, MAX_DELAY)
+        const delay = Math.min(Math.pow(2, reconnectAttempts) * 1000, MAX_RECONNECT_DELAY);
+        reconnectAttempts++;
+        const delaySeconds = Math.round(delay / 1000);
+        
+        console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttempts})...`);
+        showLoadingOverlay(`Reconnecting in ${delaySeconds}s... (attempt ${reconnectAttempts})`);
+        
+        setTimeout(() => {
+            if (currentUserName) {
+                connectToServer();
+            }
+        }, delay);
+    };
+    
+    socket.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        isConnected = false;
+        showLoadingOverlay('Connection error. Retrying...');
+    };
+    
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch (data.type) {
+            case 'initial-state':
+                selections = data.selections;
                 updateBoxDisplay();
-            }
-        } catch (e) {
-            console.error('Error loading selections:', e);
+                break;
+            
+            case 'selections-updated':
+                selections = data.selections;
+                updateBoxDisplay();
+                break;
+            
+            case 'selection-error':
+                alert(data.message);
+                break;
+            
+            case 'users-count':
+                console.log(`Connected users: ${data.count}`);
+                break;
         }
-    }
+    };
 }
 
-function initializeSync() {
-    // BroadcastChannel for cross-tab communication
-    try {
-        broadcastChannel = new BroadcastChannel('secret-santa-boxes');
-        broadcastChannel.onmessage = (event) => {
-            if (event.data.type === 'selections-updated') {
-                loadSelections();
-            }
-        };
-    } catch (e) {
-        console.warn('BroadcastChannel not supported:', e);
+function updateSyncStatus(connected) {
+    const syncIndicator = document.querySelector('.sync-indicator');
+    const syncStatus = document.querySelector('.sync-status');
+    
+    if (connected) {
+        syncIndicator.style.color = '#4ade80';
+        syncStatus.innerHTML = '<span class="sync-indicator">●</span> Live updates enabled';
+    } else {
+        syncIndicator.style.color = '#f87171';
+        syncStatus.innerHTML = '<span class="sync-indicator">●</span> Disconnected - trying to reconnect...';
     }
-    
-    // Storage event for cross-window updates
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'secretSantaSelections' && e.newValue) {
-            loadSelections();
-        }
-    });
-    
-    // Periodic sync
-    syncInterval = setInterval(() => {
-        loadSelections();
-    }, SYNC_INTERVAL_MS);
 }
 
 function downloadJSON() {
@@ -225,10 +274,14 @@ function handleUpload(event) {
             const data = JSON.parse(e.target.result);
             
             if (data.selections && typeof data.selections === 'object') {
-                selections = data.selections;
-                saveSelections();
-                updateBoxDisplay();
-                alert('Successfully loaded selections!');
+                // Send to server to update all clients
+                if (socket && socket.readyState === WebSocket.OPEN) {
+                    socket.send(JSON.stringify({ 
+                        type: 'upload-selections', 
+                        selections: data.selections 
+                    }));
+                    alert('Successfully loaded selections!');
+                }
             } else {
                 alert('Invalid file format');
             }
@@ -247,9 +300,25 @@ function handleReset() {
         return;
     }
     
-    selections = {};
-    saveSelections();
-    updateBoxDisplay();
+    // Send reset to server
+    if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ type: 'reset-all' }));
+    }
+}
+
+function showLoadingOverlay(message) {
+    if (loadingOverlay) {
+        loadingOverlay.classList.remove('hidden');
+    }
+    if (connectionStatus) {
+        connectionStatus.textContent = message;
+    }
+}
+
+function hideLoadingOverlay() {
+    if (loadingOverlay) {
+        loadingOverlay.classList.add('hidden');
+    }
 }
 
 // Start the application

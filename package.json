@@ -1,0 +1,24 @@
+{
+  "name": "secret-santa-box-picker",
+  "version": "2.0.0",
+  "description": "Real-time Secret Santa box picker with Cloudflare Workers",
+  "main": "cloudflare/worker.js",
+  "scripts": {
+    "build": "mkdir -p dist && node cloudflare/build.js",
+    "deploy": "npm run build && wrangler deploy",
+    "dev": "npm run build && wrangler dev",
+    "dev:local": "node src/js/dev-server.js"
+  },
+  "keywords": [
+    "secret-santa",
+    "websocket",
+    "real-time",
+    "cloudflare-workers"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0",
+    "ws": "^8.18.3"
+  }
+}
