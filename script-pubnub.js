@@ -26,6 +26,10 @@ let isConnected = false;
 let pubnub = null;
 const CHANNEL_NAME = 'secret-santa-boxes';
 
+// Admin configuration
+const ADMIN_NAME = 'EvacionSaraak'; // Only admin can see names and manage boxes
+let isAdmin = false;
+
 // DOM elements
 const nameModal = document.getElementById('nameModal');
 const mainContent = document.getElementById('mainContent');
@@ -48,6 +52,7 @@ function init() {
     const storedName = localStorage.getItem('secretSantaUserName');
     if (storedName) {
         currentUserName = storedName;
+        isAdmin = (storedName === ADMIN_NAME);
         showMainContent();
         connectToPubNub();
     }
@@ -85,6 +90,7 @@ function handleNameSubmit() {
     }
     
     currentUserName = name;
+    isAdmin = (name === ADMIN_NAME);
     localStorage.setItem('secretSantaUserName', name);
     showMainContent();
 }
@@ -93,7 +99,33 @@ function showMainContent() {
     nameModal.classList.add('hidden');
     mainContent.classList.remove('hidden');
     currentUserNameSpan.textContent = currentUserName;
+    
+    // Show/hide admin controls
+    updateAdminControls();
+    
     connectToPubNub();
+}
+
+function updateAdminControls() {
+    const actionsDiv = document.querySelector('.actions');
+    if (actionsDiv) {
+        if (isAdmin) {
+            actionsDiv.style.display = 'block';
+        } else {
+            actionsDiv.style.display = 'none';
+        }
+    }
+    
+    // Update welcome message to show admin status
+    const welcomeMessage = document.getElementById('welcomeMessage');
+    if (isAdmin) {
+        welcomeMessage.innerHTML = `Welcome, <span id="currentUserName">${currentUserName}</span>! <span class="admin-badge">👑 Admin</span> <button id="changeNameBtn" class="btn-link">Change Name</button>`;
+        // Re-attach event listener after updating innerHTML
+        const changeNameBtn = document.getElementById('changeNameBtn');
+        if (changeNameBtn) {
+            changeNameBtn.addEventListener('click', handleChangeName);
+        }
+    }
 }
 
 function handleChangeName() {
@@ -109,12 +141,16 @@ function handleChangeName() {
     
     const oldName = currentUserName;
     currentUserName = trimmedName;
+    isAdmin = (trimmedName === ADMIN_NAME);
     
     // Update localStorage
     localStorage.setItem('secretSantaUserName', currentUserName);
     
     // Update display
     currentUserNameSpan.textContent = currentUserName;
+    
+    // Update admin controls
+    updateAdminControls();
     
     // Update all boxes that had the old name
     for (let boxNumber in selections) {
@@ -130,8 +166,13 @@ function handleChangeName() {
         newName: currentUserName
     });
     
-    // Update local display
-    updateBoxDisplay();
+    // Regenerate boxes if admin status changed (to add/remove buttons)
+    if ((oldName === ADMIN_NAME || currentUserName === ADMIN_NAME)) {
+        generateBoxes();
+    } else {
+        // Update local display
+        updateBoxDisplay();
+    }
 }
 
 function generateBoxes() {
@@ -152,6 +193,19 @@ function generateBoxes() {
         box.appendChild(numberDiv);
         box.appendChild(ownerDiv);
         box.addEventListener('click', () => handleBoxClick(i));
+        
+        // Add admin remove button for claimed boxes
+        if (isAdmin) {
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'box-remove-btn hidden';
+            removeBtn.innerHTML = '×';
+            removeBtn.title = 'Remove selection';
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent box click
+                handleAdminRemove(i);
+            });
+            box.appendChild(removeBtn);
+        }
         
         boxGrid.appendChild(box);
     }
@@ -183,7 +237,27 @@ function handleBoxClick(boxNumber) {
         });
     } else {
         // Box is taken by someone else
-        alert(`This box is already selected by ${owner}`);
+        if (isAdmin) {
+            alert(`This box is selected by ${owner}`);
+        } else {
+            alert(`This box is already claimed`);
+        }
+    }
+}
+
+function handleAdminRemove(boxNumber) {
+    if (!isAdmin) return;
+    
+    const owner = selections[boxNumber];
+    if (!owner) return;
+    
+    if (confirm(`Remove ${owner} from box ${boxNumber}?`)) {
+        publishMessage({
+            type: 'admin-remove-box',
+            boxNumber,
+            userName: owner,
+            adminName: currentUserName
+        });
     }
 }
 
@@ -191,6 +265,7 @@ function updateBoxDisplay() {
     for (let i = 1; i <= TOTAL_BOXES; i++) {
         const box = document.querySelector(`[data-box-number="${i}"]`);
         const ownerDiv = box.querySelector('.box-owner');
+        const removeBtn = box.querySelector('.box-remove-btn');
         const owner = selections[i];
         
         // Reset classes
@@ -199,12 +274,20 @@ function updateBoxDisplay() {
         if (owner === currentUserName) {
             box.classList.add('selected');
             ownerDiv.textContent = currentUserName;
+            if (removeBtn) removeBtn.classList.add('hidden');
         } else if (owner) {
             box.classList.add('taken');
-            ownerDiv.textContent = owner;
+            // Show name for admin, "Claimed" for regular users
+            if (isAdmin) {
+                ownerDiv.textContent = owner;
+                if (removeBtn) removeBtn.classList.remove('hidden');
+            } else {
+                ownerDiv.textContent = 'Claimed';
+            }
         } else {
             box.classList.add('available');
             ownerDiv.textContent = '';
+            if (removeBtn) removeBtn.classList.add('hidden');
         }
         
         // Disable all boxes if not connected
@@ -279,6 +362,14 @@ function handleMessage(message) {
             break;
         
         case 'unselect-box':
+            if (selections[message.boxNumber] === message.userName) {
+                delete selections[message.boxNumber];
+                updateBoxDisplay();
+            }
+            break;
+        
+        case 'admin-remove-box':
+            // Admin removing someone's box selection
             if (selections[message.boxNumber] === message.userName) {
                 delete selections[message.boxNumber];
                 updateBoxDisplay();

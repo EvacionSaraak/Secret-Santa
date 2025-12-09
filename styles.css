@@ -293,6 +293,49 @@ body {
     opacity: 0.8;
 }
 
+/* Admin Styles */
+.admin-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    margin-left: 8px;
+    box-shadow: 0 2px 8px rgba(245, 87, 108, 0.3);
+}
+
+.box-remove-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #dc3545;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    z-index: 10;
+    padding: 0;
+}
+
+.box-remove-btn:hover {
+    background: #c82333;
+    transform: scale(1.1);
+}
+
+.box-remove-btn.hidden {
+    display: none;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .header h1 {
