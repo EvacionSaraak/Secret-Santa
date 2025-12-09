@@ -424,7 +424,6 @@ function handleChangeNameSubmit() {
     changeNameModal.classList.add('hidden');
     changeNameInput.value = '';
 }
-}
 
 function generateBoxes() {
     boxGrid.innerHTML = '';
