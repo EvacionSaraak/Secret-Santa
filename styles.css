@@ -226,6 +226,50 @@ body {
     font-style: italic;
 }
 
+/* New box content styles */
+.box-content {
+    font-size: 0.85rem;
+    word-break: break-word;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.box-picker {
+    font-size: 0.75rem;
+    margin-bottom: 4px;
+}
+
+.box-assigned {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.box.selected .box-assigned {
+    color: #ffd700;
+}
+
+.box.selected .box-picker {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.box-claimed {
+    font-size: 0.9rem;
+    color: #4a5568;
+    font-style: italic;
+}
+
+.box-available {
+    font-size: 0.9rem;
+    color: #667eea;
+}
+
+.box-available small {
+    display: block;
+    font-size: 0.7rem;
+    margin-top: 4px;
+    color: #8b94b8;
+}
+
 /* Actions */
 .actions {
     display: flex;

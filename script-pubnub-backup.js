@@ -20,15 +20,14 @@ if (PUBNUB_CONFIG.publishKey === PLACEHOLDER_PUBLISH_KEY ||
 
 // State management
 let currentUserName = '';
-let participants = []; // Array of participant names loaded from participants.txt
-let boxes = {}; // { boxNumber: { picker: userName, assigned: assignedName } }
-let TOTAL_BOXES = 0; // Will be set to participants.length
+let selections = {}; // { boxNumber: userName }
+const TOTAL_BOXES = 60;
 let isConnected = false;
 let pubnub = null;
 const CHANNEL_NAME = 'secret-santa-boxes';
 
 // Admin configuration
-const ADMIN_NAME = 'EvacionSaraak'; // Only admin can see all assignments
+const ADMIN_NAME = 'EvacionSaraak'; // Only admin can see names and manage boxes
 let isAdmin = false;
 
 // DOM elements
@@ -48,10 +47,7 @@ const syncIndicator = document.querySelector('.sync-indicator');
 const syncStatus = document.querySelector('.sync-status');
 
 // Initialize
-async function init() {
-    // Load participants from file
-    await loadParticipants();
-    
+function init() {
     // Check if user already has a name stored
     const storedName = localStorage.getItem('secretSantaUserName');
     if (storedName) {
@@ -66,52 +62,6 @@ async function init() {
     
     // Generate boxes
     generateBoxes();
-}
-
-// Load participants from participants.txt
-async function loadParticipants() {
-    try {
-        const response = await fetch('participants.txt');
-        const text = await response.text();
-        participants = text.split('\n')
-            .map(name => name.trim())
-            .filter(name => name.length > 0);
-        
-        TOTAL_BOXES = participants.length;
-        console.log(`Loaded ${TOTAL_BOXES} participants`);
-        
-        // Initialize assignments if not already done
-        if (Object.keys(boxes).length === 0) {
-            initializeAssignments();
-        }
-    } catch (error) {
-        console.error('Error loading participants:', error);
-        alert('Error loading participants list. Please make sure participants.txt exists.');
-        participants = [];
-        TOTAL_BOXES = 0;
-    }
-}
-
-// Initialize random assignments for each box
-function initializeAssignments() {
-    // Create a shuffled copy of participants for assignments
-    const shuffled = [...participants];
-    
-    // Fisher-Yates shuffle
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    
-    // Assign each box a recipient
-    for (let i = 1; i <= TOTAL_BOXES; i++) {
-        boxes[i] = {
-            picker: '', // Empty until someone picks this box
-            assigned: shuffled[i - 1] // Pre-assigned recipient
-        };
-    }
-    
-    console.log('Initialized box assignments:', boxes);
 }
 
 function setupEventListeners() {
@@ -222,10 +172,10 @@ function handleChangeName() {
     // Update admin controls
     updateAdminControls();
     
-    // Update all boxes that had the old picker name
-    for (let boxNumber in boxes) {
-        if (boxes[boxNumber].picker === oldName) {
-            boxes[boxNumber].picker = currentUserName;
+    // Update all boxes that had the old name
+    for (let boxNumber in selections) {
+        if (selections[boxNumber] === oldName) {
+            selections[boxNumber] = currentUserName;
         }
     }
     
@@ -233,12 +183,16 @@ function handleChangeName() {
     publishMessage({
         type: 'name-change',
         oldName: oldName,
-        newName: currentUserName,
-        boxes: boxes
+        newName: currentUserName
     });
     
-    // Update display
-    updateBoxDisplay();
+    // Regenerate boxes if admin status changed (to add/remove buttons)
+    if ((oldName === ADMIN_NAME || currentUserName === ADMIN_NAME)) {
+        generateBoxes();
+    } else {
+        // Update local display
+        updateBoxDisplay();
+    }
 }
 
 function generateBoxes() {
@@ -253,11 +207,11 @@ function generateBoxes() {
         numberDiv.className = 'box-number';
         numberDiv.textContent = i;
         
-        const contentDiv = document.createElement('div');
-        contentDiv.className = 'box-content';
+        const ownerDiv = document.createElement('div');
+        ownerDiv.className = 'box-owner';
         
         box.appendChild(numberDiv);
-        box.appendChild(contentDiv);
+        box.appendChild(ownerDiv);
         box.addEventListener('click', () => handleBoxClick(i));
         
         // Add admin remove button for claimed boxes
@@ -285,20 +239,17 @@ function handleBoxClick(boxNumber) {
         return;
     }
     
-    const box = boxes[boxNumber];
-    if (!box) return;
+    const owner = selections[boxNumber];
     
-    if (box.picker === currentUserName) {
-        // User is clicking their own box - show assignment or unselect
-        if (confirm('Do you want to unselect this box?')) {
-            publishMessage({
-                type: 'unselect-box',
-                boxNumber,
-                userName: currentUserName
-            });
-        }
-    } else if (!box.picker) {
-        // Box is available - select it and show assignment
+    if (owner === currentUserName) {
+        // User is unselecting their own box
+        publishMessage({
+            type: 'unselect-box',
+            boxNumber,
+            userName: currentUserName
+        });
+    } else if (!owner) {
+        // Box is available - select it (server will handle unsetting previous box)
         publishMessage({
             type: 'select-box',
             boxNumber,
@@ -307,7 +258,7 @@ function handleBoxClick(boxNumber) {
     } else {
         // Box is taken by someone else
         if (isAdmin) {
-            alert(`This box is selected by ${box.picker}\nAssigned: ${box.assigned}`);
+            alert(`This box is selected by ${owner}`);
         } else {
             alert(`This box is already claimed`);
         }
@@ -317,14 +268,14 @@ function handleBoxClick(boxNumber) {
 function handleAdminRemove(boxNumber) {
     if (!isAdmin) return;
     
-    const box = boxes[boxNumber];
-    if (!box || !box.picker) return;
+    const owner = selections[boxNumber];
+    if (!owner) return;
     
-    if (confirm(`Remove ${box.picker} from box ${boxNumber}?`)) {
+    if (confirm(`Remove ${owner} from box ${boxNumber}?`)) {
         publishMessage({
             type: 'admin-remove-box',
             boxNumber,
-            userName: box.picker,
+            userName: owner,
             adminName: currentUserName
         });
     }
@@ -332,58 +283,36 @@ function handleAdminRemove(boxNumber) {
 
 function updateBoxDisplay() {
     for (let i = 1; i <= TOTAL_BOXES; i++) {
-        const boxElement = document.querySelector(`[data-box-number="${i}"]`);
-        if (!boxElement) continue;
-        
-        const contentDiv = boxElement.querySelector('.box-content');
-        const removeBtn = boxElement.querySelector('.box-remove-btn');
-        const box = boxes[i];
-        
-        if (!box) continue;
+        const box = document.querySelector(`[data-box-number="${i}"]`);
+        const ownerDiv = box.querySelector('.box-owner');
+        const removeBtn = box.querySelector('.box-remove-btn');
+        const owner = selections[i];
         
         // Reset classes
-        boxElement.classList.remove('available', 'selected', 'taken', 'disabled');
+        box.classList.remove('available', 'selected', 'taken', 'disabled');
         
-        if (box.picker === currentUserName) {
-            // User's own box - show who they're assigned to gift
-            boxElement.classList.add('selected');
-            contentDiv.innerHTML = `
-                <div class="box-picker">You picked this!</div>
-                <div class="box-assigned">🎁 Gift to: <strong>${box.assigned}</strong></div>
-            `;
+        if (owner === currentUserName) {
+            box.classList.add('selected');
+            ownerDiv.textContent = currentUserName;
             if (removeBtn) removeBtn.classList.add('hidden');
-        } else if (box.picker) {
-            // Box claimed by someone else
-            boxElement.classList.add('taken');
-            
+        } else if (owner) {
+            box.classList.add('taken');
+            // Show name for admin, "Claimed" for regular users
             if (isAdmin) {
-                // Admin sees picker and assignment
-                contentDiv.innerHTML = `
-                    <div class="box-picker">Picker: ${box.picker}</div>
-                    <div class="box-assigned">Assigned: ${box.assigned}</div>
-                `;
+                ownerDiv.textContent = owner;
                 if (removeBtn) removeBtn.classList.remove('hidden');
             } else {
-                // Regular users just see "Claimed"
-                contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
-                if (removeBtn) removeBtn.classList.add('hidden');
+                ownerDiv.textContent = 'Claimed';
             }
         } else {
-            // Available box
-            boxElement.classList.add('available');
-            
-            if (isAdmin) {
-                // Admin sees who will be assigned
-                contentDiv.innerHTML = `<div class="box-available">Available<br><small>Assigned: ${box.assigned}</small></div>`;
-            } else {
-                contentDiv.innerHTML = `<div class="box-available">Available</div>`;
-            }
+            box.classList.add('available');
+            ownerDiv.textContent = '';
             if (removeBtn) removeBtn.classList.add('hidden');
         }
         
         // Disable all boxes if not connected
         if (!isConnected) {
-            boxElement.classList.add('disabled');
+            box.classList.add('disabled');
         }
     }
 }
@@ -435,99 +364,64 @@ function handleMessage(message) {
     
     switch (message.type) {
         case 'state-response':
-            // Update boxes from server
-            if (message.boxes && typeof message.boxes === 'object') {
-                boxes = message.boxes;
-                updateBoxDisplay();
-                
-                // Save to repository (admin only, automatic)
-                if (isAdmin) {
-                    saveToRepository();
-                }
-            }
+            // Update selections from server
+            selections = message.selections || {};
+            updateBoxDisplay();
             break;
         
         case 'select-box':
             // Remove any previous selection by this user
-            for (let boxNum in boxes) {
-                if (boxes[boxNum].picker === message.userName) {
-                    boxes[boxNum].picker = '';
+            for (let box in selections) {
+                if (selections[box] === message.userName) {
+                    delete selections[box];
                 }
             }
             // Add new selection
-            if (boxes[message.boxNumber]) {
-                boxes[message.boxNumber].picker = message.userName;
-            }
+            selections[message.boxNumber] = message.userName;
             updateBoxDisplay();
-            
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
             break;
         
         case 'unselect-box':
-            if (boxes[message.boxNumber] && boxes[message.boxNumber].picker === message.userName) {
-                boxes[message.boxNumber].picker = '';
+            if (selections[message.boxNumber] === message.userName) {
+                delete selections[message.boxNumber];
                 updateBoxDisplay();
-                
-                // Save to repository
-                if (isAdmin) {
-                    saveToRepository();
-                }
             }
             break;
         
         case 'admin-remove-box':
             // Admin removing someone's box selection
-            if (boxes[message.boxNumber] && boxes[message.boxNumber].picker === message.userName) {
-                boxes[message.boxNumber].picker = '';
+            if (selections[message.boxNumber] === message.userName) {
+                delete selections[message.boxNumber];
                 updateBoxDisplay();
-                
-                // Save to repository
-                if (isAdmin) {
-                    saveToRepository();
-                }
             }
             break;
         
         case 'reset-all':
-            // Reset all pickers but keep assignments
-            for (let boxNum in boxes) {
-                boxes[boxNum].picker = '';
-            }
+            selections = {};
             updateBoxDisplay();
-            
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
             break;
         
-        case 'upload-boxes':
-            boxes = message.boxes || {};
+        case 'upload-selections':
+            selections = message.selections || {};
             updateBoxDisplay();
-            
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
             break;
         
         case 'name-change':
-            // Update all boxes that had the old picker name with the new name
-            if (message.boxes) {
-                boxes = message.boxes;
-                updateBoxDisplay();
+            // Update all boxes that had the old name with the new name
+            for (let boxNumber in selections) {
+                if (selections[boxNumber] === message.oldName) {
+                    selections[boxNumber] = message.newName;
+                }
             }
+            updateBoxDisplay();
             break;
         
         case 'state-request':
-            // Someone is requesting current state, send it if we have boxes
-            if (Object.keys(boxes).length > 0) {
+            // Someone is requesting current state, send it if we have selections
+            if (Object.keys(selections).length > 0) {
                 publishMessage({
                     type: 'state-response',
-                    boxes: boxes
+                    selections
                 });
             }
             break;
@@ -540,11 +434,10 @@ function requestCurrentState() {
         type: 'state-request'
     });
     
-    // If no response after 2 seconds, use initialized state
+    // If no response after 2 seconds, assume we're first
     setTimeout(() => {
-        if (Object.keys(boxes).filter(k => boxes[k].picker).length === 0) {
-            console.log('Using initialized assignments');
-            updateBoxDisplay();
+        if (Object.keys(selections).length === 0) {
+            console.log('No existing state found');
         }
     }, 2000);
 }
@@ -579,8 +472,7 @@ function updateSyncStatus(connected) {
 
 function downloadJSON() {
     const data = {
-        boxes: boxes,
-        participants: participants,
+        selections: selections,
         totalBoxes: TOTAL_BOXES,
         timestamp: new Date().toISOString()
     };
@@ -591,7 +483,7 @@ function downloadJSON() {
     
     const a = document.createElement('a');
     a.href = url;
-    a.download = `secret-santa-assignments-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `secret-santa-boxes-${new Date().toISOString().split('T')[0]}.json`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -607,24 +499,15 @@ function handleUpload(event) {
         try {
             const data = JSON.parse(e.target.result);
             
-            if (data.boxes && typeof data.boxes === 'object') {
-                // Validate the data
-                const isValid = Object.values(data.boxes).every(box => 
-                    box.hasOwnProperty('picker') && box.hasOwnProperty('assigned')
-                );
-                
-                if (isValid) {
-                    // Publish to all clients
-                    publishMessage({
-                        type: 'upload-boxes',
-                        boxes: data.boxes
-                    });
-                    alert('Successfully loaded box assignments!');
-                } else {
-                    alert('Invalid file format: missing picker or assigned fields');
-                }
+            if (data.selections && typeof data.selections === 'object') {
+                // Publish to all clients
+                publishMessage({
+                    type: 'upload-selections',
+                    selections: data.selections
+                });
+                alert('Successfully loaded selections!');
             } else {
-                alert('Invalid file format: missing boxes data');
+                alert('Invalid file format');
             }
         } catch (error) {
             alert('Error reading file: ' + error.message);
@@ -637,31 +520,12 @@ function handleUpload(event) {
 }
 
 function handleReset() {
-    if (!confirm('Are you sure you want to reset all selections? This will clear who picked each box but keep the assignments.')) {
+    if (!confirm('Are you sure you want to reset all selections? This cannot be undone.')) {
         return;
     }
     
     // Publish reset to all clients
     publishMessage({ type: 'reset-all' });
-}
-
-// Save current state to repository (manual for GitHub Pages - shows instructions)
-function saveToRepository() {
-    if (!isAdmin) return;
-    
-    // Create the JSON data
-    const data = {
-        boxes: boxes,
-        participants: participants,
-        totalBoxes: TOTAL_BOXES,
-        lastUpdated: new Date().toISOString()
-    };
-    
-    console.log('Repository state to save:', data);
-    
-    // For GitHub Pages, we can't automatically commit
-    // Instead, we'll provide download instructions to admin
-    // In a real implementation with server-side code, this would auto-commit
 }
 
 function showLoadingOverlay(message) {
