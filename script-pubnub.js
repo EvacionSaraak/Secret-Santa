@@ -46,7 +46,6 @@ const boxGrid = document.getElementById('boxGrid');
 const downloadBtn = document.getElementById('downloadBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
-const resetBtn = document.getElementById('resetBtn');
 const clearUsersBtn = document.getElementById('clearUsersBtn');
 const showParticipantsBtn = document.getElementById('showParticipantsBtn');
 const participantsModal = document.getElementById('participantsModal');
@@ -157,6 +156,12 @@ function setupEventListeners() {
         adminLoginBtnMain.addEventListener('click', handleAdminLogin);
     }
     
+    // Admin logout button
+    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+    if (adminLogoutBtn) {
+        adminLogoutBtn.addEventListener('click', handleAdminLogout);
+    }
+    
     // Change name button
     const changeNameBtn = document.getElementById('changeNameBtn');
     if (changeNameBtn) {
@@ -176,7 +181,6 @@ function setupEventListeners() {
     downloadBtn.addEventListener('click', downloadJSON);
     uploadBtn.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleUpload);
-    resetBtn.addEventListener('click', handleReset);
     clearUsersBtn.addEventListener('click', handleClearUsers);
     showParticipantsBtn.addEventListener('click', showParticipants);
     closeParticipantsBtn.addEventListener('click', () => {
@@ -370,11 +374,31 @@ function showMainContent() {
 
 function updateAdminControls() {
     const actionsDiv = document.querySelector('.actions');
+    const adminLoginButtons = document.querySelectorAll('.btn-admin-login');
+    const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+    
     if (actionsDiv) {
         if (isAdmin) {
             actionsDiv.style.display = 'block';
         } else {
             actionsDiv.style.display = 'none';
+        }
+    }
+    
+    // Show/hide admin login/logout buttons
+    adminLoginButtons.forEach(btn => {
+        if (isAdmin) {
+            btn.classList.add('hidden');
+        } else {
+            btn.classList.remove('hidden');
+        }
+    });
+    
+    if (adminLogoutBtn) {
+        if (isAdmin) {
+            adminLogoutBtn.classList.remove('hidden');
+        } else {
+            adminLogoutBtn.classList.add('hidden');
         }
     }
     
@@ -407,6 +431,17 @@ function updateAdminControls() {
         if (adminBadge) {
             adminBadge.remove();
         }
+    }
+}
+
+function handleAdminLogout() {
+    if (!isAdmin) return;
+    
+    if (confirm('Are you sure you want to logout as admin?')) {
+        isAdmin = false;
+        updateAdminControls();
+        updateBoxDisplay();
+        alert('Logged out from admin mode.');
     }
 }
 
@@ -518,6 +553,12 @@ function handleBoxClick(boxNumber) {
         return;
     }
     
+    // Validate user is in participants list before allowing box selection
+    if (!participants.includes(currentUserName)) {
+        alert('Your name is not in the participants list. Please contact the admin.');
+        return;
+    }
+    
     const box = boxes[boxNumber];
     if (!box) return;
     
@@ -546,7 +587,15 @@ function handleBoxClick(boxNumber) {
     } else {
         // Box is taken by someone else
         if (isAdmin) {
-            alert(`This box is selected by ${box.picker}\nAssigned: ${box.assigned}`);
+            // Admin can remove the claim
+            if (confirm(`This box is selected by ${box.picker}\nAssigned: ${box.assigned}\n\nDo you want to remove ${box.picker} from this box?`)) {
+                publishMessage({
+                    type: 'admin-remove-box',
+                    boxNumber,
+                    userName: box.picker,
+                    adminName: currentUserName
+                });
+            }
         } else {
             alert(`This box is already claimed`);
         }
@@ -730,21 +779,8 @@ function handleMessage(message) {
             }
             break;
         
-        case 'reset-all':
-            // Reset all pickers but keep assignments
-            for (let boxNum in boxes) {
-                boxes[boxNum].picker = '';
-            }
-            updateBoxDisplay();
-            
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
-            break;
-        
         case 'clear-users':
-            // Clear all users (same as reset-all) - admin only
+            // Clear all users - removes all pickers but keeps assignments
             for (let boxNum in boxes) {
                 boxes[boxNum].picker = '';
             }
@@ -886,15 +922,6 @@ function handleUpload(event) {
     
     // Reset input
     event.target.value = '';
-}
-
-function handleReset() {
-    if (!confirm('Are you sure you want to reset all selections? This will clear who picked each box but keep the assignments.')) {
-        return;
-    }
-    
-    // Publish reset to all clients
-    publishMessage({ type: 'reset-all' });
 }
 
 function handleClearUsers() {
