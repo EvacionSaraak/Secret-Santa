@@ -47,6 +47,7 @@ const downloadBtn = document.getElementById('downloadBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const resetBtn = document.getElementById('resetBtn');
+const clearUsersBtn = document.getElementById('clearUsersBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const connectionStatus = document.getElementById('connectionStatus');
 const syncIndicator = document.querySelector('.sync-indicator');
@@ -173,6 +174,7 @@ function setupEventListeners() {
     uploadBtn.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleUpload);
     resetBtn.addEventListener('click', handleReset);
+    clearUsersBtn.addEventListener('click', handleClearUsers);
 }
 
 // Setup autocomplete functionality for any input element
@@ -473,13 +475,19 @@ function handleBoxClick(boxNumber) {
     if (!box) return;
     
     if (box.picker === currentUserName) {
-        // User is clicking their own box - show assignment or unselect
-        if (confirm('Do you want to unselect this box?')) {
-            publishMessage({
-                type: 'unselect-box',
-                boxNumber,
-                userName: currentUserName
-            });
+        // User is clicking their own box
+        if (isAdmin) {
+            // Admin can unpick
+            if (confirm('Do you want to unselect this box?')) {
+                publishMessage({
+                    type: 'unselect-box',
+                    boxNumber,
+                    userName: currentUserName
+                });
+            }
+        } else {
+            // Non-admin cannot unpick
+            alert('Cannot unpick a box. You already saw who you\'re gifting, it will be unfair to unpick and pick someone else.');
         }
     } else if (!box.picker) {
         // Box is available - select it and show assignment
@@ -688,6 +696,19 @@ function handleMessage(message) {
             }
             break;
         
+        case 'clear-users':
+            // Clear all users (same as reset-all) - admin only
+            for (let boxNum in boxes) {
+                boxes[boxNum].picker = '';
+            }
+            updateBoxDisplay();
+            
+            // Save to repository
+            if (isAdmin) {
+                saveToRepository();
+            }
+            break;
+        
         case 'upload-boxes':
             boxes = message.boxes || {};
             updateBoxDisplay();
@@ -827,6 +848,17 @@ function handleReset() {
     
     // Publish reset to all clients
     publishMessage({ type: 'reset-all' });
+}
+
+function handleClearUsers() {
+    if (!isAdmin) return;
+    
+    if (!confirm('Are you sure you want to CLEAR ALL USERS? This will remove all pickers from all boxes but keep the gift assignments intact.\n\nThis is useful for clearing old test data before the real event.')) {
+        return;
+    }
+    
+    // Publish clear-users to all clients
+    publishMessage({ type: 'clear-users' });
 }
 
 // Save current state to repository (manual for GitHub Pages - shows instructions)
