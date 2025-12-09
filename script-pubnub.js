@@ -82,10 +82,10 @@ function toCamelCase(str) {
         .join(' ');
 }
 
-// Load participants from participants.txt
+// Load participants from data/participants.txt
 async function loadParticipants() {
     try {
-        const response = await fetch('participants.txt');
+        const response = await fetch('data/participants.txt');
         const text = await response.text();
         participants = text.split('\n')
             .map(name => name.trim())
@@ -101,7 +101,7 @@ async function loadParticipants() {
         }
     } catch (error) {
         console.error('Error loading participants:', error);
-        alert('Error loading participants list. Please make sure participants.txt exists.');
+        alert('Error loading participants list. Please make sure data/participants.txt exists.');
         participants = [];
         TOTAL_BOXES = 0;
     }

@@ -2,12 +2,12 @@
   "name": "secret-santa-box-picker",
   "version": "2.0.0",
   "description": "Real-time Secret Santa box picker with Cloudflare Workers",
-  "main": "worker.js",
+  "main": "cloudflare/worker.js",
   "scripts": {
-    "build": "mkdir -p dist && node build.js",
+    "build": "mkdir -p dist && node cloudflare/build.js",
     "deploy": "npm run build && wrangler deploy",
     "dev": "npm run build && wrangler dev",
-    "dev:local": "node dev-server.js"
+    "dev:local": "node src/js/dev-server.js"
   },
   "keywords": [
     "secret-santa",

@@ -1,33 +1,68 @@
 # Secret-Santa
-A real-time Secret Santa box picker with live updates across all users.
+A real-time Secret Santa gift assignment system with live updates across all users.
 
 ![Secret Santa Box Picker Preview](https://github.com/user-attachments/assets/7f9685f9-a090-4f55-ab1f-9d8c449fc547)
 
 ## Features
 - **Real-time synchronization**: See updates immediately when anyone selects a box
+- **Gift assignments**: Each box reveals who you should gift to when selected
+- **Privacy protection**: Only you and admin can see who you're gifting to
 - **One box per user**: Each user can only select one box at a time
-- **Live updates**: Changes are reflected instantly on all connected users' screens
-- **60 boxes**: Pick from 60 different boxes
+- **Participant validation**: Only authorized participants can log in via autocomplete
+- **Admin controls**: Full visibility and management for event organizer
+- **Autocomplete selection**: Easy name selection from participants list
+- **Camel Case formatting**: All names displayed consistently
+- **Dynamic box sizing**: Boxes auto-expand for long names
 - **Multiple deployment options**: GitHub Pages, Local, or Cloudflare Workers
+
+## Project Structure
+
+```
+Secret-Santa/
+├── index.html                  # Main application file
+├── script-pubnub.js           # PubNub integration script
+├── package.json               # NPM configuration
+├── README.md                  # This file
+├── src/                       # Source files
+│   ├── css/                   # Stylesheets
+│   │   └── styles.css        # Main styles
+│   └── js/                    # JavaScript files
+│       └── dev-server.js     # Local development server
+├── data/                      # Data files
+│   ├── participants.txt      # List of all participants (edit this!)
+│   ├── secret-santa-state.json  # Example state structure
+│   └── sample-event.json     # Sample event data
+├── docs/                      # Documentation
+│   ├── DEPLOYMENT.md         # Cloudflare deployment guide
+│   ├── SETUP_GITHUB_PAGES.md # Quick GitHub Pages setup
+│   ├── GITHUB_PAGES_SETUP.md # Comprehensive Pages guide
+│   └── IMPLEMENTATION_SUMMARY.md  # Technical details
+├── cloudflare/                # Cloudflare Workers files
+│   ├── worker.js             # Worker with Durable Objects
+│   ├── build.js              # Build script
+│   └── wrangler.toml         # Wrangler configuration
+└── backups/                   # Backup/old files
+```
 
 ## Preview
 
-The application features a beautiful gradient interface where users can see all 60 boxes in a grid layout. Selected boxes are highlighted in purple with the user's name, while available boxes remain light blue.
+The application features a beautiful gradient interface where users can see all boxes in a grid layout. Selected boxes are highlighted in purple with the picker's name (for admin) or "Claimed" (for regular users).
 
-![Multi-user real-time updates](https://github.com/user-attachments/assets/51f7f485-2ada-4c64-bf7d-32dbeb97fe2d)
+![Multi-user real-time updates](https://github.com/user-attachments/assets/51f7f485-2ada-4c64-bf7d-32dbem97fe2d)
 
 ## Quick Start Options
 
-### Option 1: GitHub Pages (No npm required!)
+### Option 1: GitHub Pages (Recommended - No npm required!)
 
 Perfect if you want to deploy without installing anything:
 
 1. **Get free PubNub API keys**: [https://www.pubnub.com/](https://www.pubnub.com/)
-2. **Update** `script-pubnub.js` with your keys
-3. **Enable GitHub Pages** in repository settings
-4. **Done!** Your app is live at `https://[username].github.io/[repository]/`
+2. **Update** `script-pubnub.js` with your keys (lines 9-10)
+3. **Edit** `data/participants.txt` with your participant names (one per line)
+4. **Enable GitHub Pages** in repository Settings → Pages
+5. **Done!** Your app is live at `https://[username].github.io/[repository]/`
 
-📖 **Detailed guide**: See [GITHUB_PAGES_SETUP.md](GITHUB_PAGES_SETUP.md)
+📖 **Detailed guide**: See [docs/SETUP_GITHUB_PAGES.md](docs/SETUP_GITHUB_PAGES.md)
 
 ### Option 2: Local Development
 
@@ -43,80 +78,80 @@ npm install
 npm run dev:local
 ```
 
-3. Open your browser to:
-```
-http://localhost:3000
-```
-
-4. Open multiple browser tabs/windows to test multi-user functionality!
-
-**Note:** The local server (`dev:local`) uses a simple Node.js WebSocket server for testing. For production deployment, use GitHub Pages or Cloudflare Workers.
+3. Open your browser to: `http://localhost:3000`
 
 ### Option 3: Cloudflare Workers (Production)
 
-For persistent state and global edge deployment:
+For production deployment with persistent state:
 
+1. Install Wrangler globally:
 ```bash
 npm install -g wrangler
+```
+
+2. Login to Cloudflare:
+```bash
 wrangler login
-npm run build
+```
+
+3. Build and deploy:
+```bash
 npm run deploy
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for complete instructions.
+📖 **Detailed guide**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
-## Deployment Comparison
+## Customizing Participants
 
-| Method | Setup | npm Required | Persistent State | Best For |
-|--------|-------|--------------|------------------|----------|
-| **GitHub Pages + PubNub** | ⭐ Easy | ❌ No | ❌ No | Quick sharing, no setup |
-| **Local Development** | ⭐⭐ Moderate | ✅ Yes | ❌ No | Testing |
-| **Cloudflare Workers** | ⭐⭐⭐ Advanced | ✅ Yes | ✅ Yes | Production |
+Edit `data/participants.txt` - one name per line:
 
-## How to Use
-
-1. When you first open the app, enter your name
-2. Click on any available box to select it
-3. You can only select one box at a time - selecting a new box will automatically unselect your previous choice
-4. Click your own box to unselect it
-5. See real-time updates as other users select their boxes
-
-## Features
-
-- **Download JSON**: Export all current selections
-- **Upload JSON**: Import previously saved selections
-- **Reset All**: Clear all selections (use with caution!)
-
-## Technology
-
-- **Frontend**: HTML, CSS, JavaScript
-- **Real-time Options**:
-  - PubNub (for GitHub Pages)
-  - WebSocket with Node.js (for local dev)
-  - Durable Objects (for Cloudflare Workers)
-
-## Troubleshooting
-
-### "Unable to connect" error
-
-**For GitHub Pages:**
-1. Make sure you've updated your PubNub keys in `script-pubnub.js`
-2. Check browser console for error messages
-3. Verify GitHub Pages is enabled in repository settings
-
-**For local development:**
-1. Make sure you're running `npm run dev:local`
-2. Don't just open the HTML file directly
-
-**For Cloudflare:**
-1. Run `npm run dev` or `npm run deploy` first
-
-### Port already in use
-
-If port 3000 is already in use, you can change it:
-```bash
-PORT=8080 npm run dev:local
+```
+Alice Johnson
+Bob Smith
+Carol Williams
+...
 ```
 
+- Total boxes will automatically equal total participants
+- Names are auto-converted to Camel Case
+- Commit changes to repository for GitHub Pages deployment
 
+## Admin Access
 
+**Admin Username:** `EvacionSaraak` (hardcoded)  
+**Admin Password:** `SecretSanta2025!` (configurable in script-pubnub.js)
+
+Admin can:
+- See all picker names and assignments
+- Remove users from boxes
+- Download/upload JSON state
+- Reset all selections
+- Change user names
+
+**Admin Login Button:** Always visible in top-right corner of header
+
+## How It Works
+
+1. **Participants** select their name from autocomplete dropdown
+2. **Click a box** to claim it and see gift assignment
+3. **Privacy**: Only picker and admin see the assignment
+4. **Real-time**: All changes sync instantly via PubNub
+5. **One box per user**: Selecting new box auto-unselects previous
+
+## Documentation
+
+- [Quick GitHub Pages Setup](docs/SETUP_GITHUB_PAGES.md) - 5-minute guide
+- [Comprehensive GitHub Pages Guide](docs/GITHUB_PAGES_SETUP.md) - Detailed instructions
+- [Cloudflare Workers Deployment](docs/DEPLOYMENT.md) - Production deployment
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Technical details
+
+## Technologies
+
+- **Frontend**: HTML5, CSS3, Vanilla JavaScript
+- **Real-time**: PubNub (GitHub Pages) or WebSocket (Cloudflare Workers)
+- **State Management**: Durable Objects (Cloudflare) or in-memory (local)
+- **Deployment**: GitHub Pages, Cloudflare Workers, or local Node.js
+
+## License
+
+MIT License - See LICENSE file for details
