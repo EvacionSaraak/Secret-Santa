@@ -28,7 +28,7 @@ let pubnub = null;
 const CHANNEL_NAME = 'secret-santa-boxes';
 
 // Admin configuration
-const ADMIN_NAME = 'EvacionSaraak'; // Only admin can see all assignments
+const ADMIN_NAME = 'ADMIN'; // Admin has special account and cannot be a participant
 const ADMIN_PASSWORD = 'SecretSanta2025!'; // Admin password (keep secret!)
 let isAdmin = false;
 
@@ -64,7 +64,7 @@ async function init() {
     const storedName = localStorage.getItem('secretSantaUserName');
     if (storedName) {
         currentUserName = storedName;
-        isAdmin = (storedName === ADMIN_NAME);
+        isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
         showMainContent();
         connectToPubNub();
     }
@@ -446,7 +446,13 @@ function handleAdminLogout() {
 }
 
 function handleChangeName() {
-    // All users can change their names
+    // Admin cannot change to participant name (ADMIN is special)
+    if (isAdmin) {
+        alert('Admin account name cannot be changed. ADMIN is a special account for managing the event only.');
+        return;
+    }
+    
+    // Regular users can change their names
     // Show change name modal
     changeNameInput.value = '';
     changeNameModal.classList.remove('hidden');
@@ -553,6 +559,12 @@ function handleBoxClick(boxNumber) {
         return;
     }
     
+    // Admin cannot select boxes (ADMIN is not a participant)
+    if (currentUserName === ADMIN_NAME) {
+        alert('Admin account cannot select boxes. Admin is only for managing the event.');
+        return;
+    }
+    
     // Validate user is in participants list before allowing box selection
     if (!participants.includes(currentUserName)) {
         alert('Your name is not in the participants list. Please contact the admin.');
@@ -565,7 +577,7 @@ function handleBoxClick(boxNumber) {
     if (box.picker === currentUserName) {
         // User is clicking their own box
         if (isAdmin) {
-            // Admin can unpick
+            // Admin can unpick (though they shouldn't have boxes)
             if (confirm('Do you want to unselect this box?')) {
                 publishMessage({
                     type: 'unselect-box',
