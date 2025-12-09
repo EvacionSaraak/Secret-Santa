@@ -118,12 +118,32 @@ function updateAdminControls() {
     
     // Update welcome message to show admin status
     const welcomeMessage = document.getElementById('welcomeMessage');
+    const currentUserNameSpan = document.getElementById('currentUserName');
+    
+    if (currentUserNameSpan) {
+        currentUserNameSpan.textContent = currentUserName;
+    }
+    
     if (isAdmin) {
-        welcomeMessage.innerHTML = `Welcome, <span id="currentUserName">${currentUserName}</span>! <span class="admin-badge">👑 Admin</span> <button id="changeNameBtn" class="btn-link">Change Name</button>`;
-        // Re-attach event listener after updating innerHTML
+        // Check if admin badge already exists
+        let adminBadge = welcomeMessage.querySelector('.admin-badge');
+        if (!adminBadge) {
+            adminBadge = document.createElement('span');
+            adminBadge.className = 'admin-badge';
+            adminBadge.textContent = '👑 Admin';
+            currentUserNameSpan.insertAdjacentElement('afterend', adminBadge);
+        }
+        
+        // Re-attach event listener for change name button
         const changeNameBtn = document.getElementById('changeNameBtn');
         if (changeNameBtn) {
             changeNameBtn.addEventListener('click', handleChangeName);
+        }
+    } else {
+        // Remove admin badge if it exists
+        const adminBadge = welcomeMessage.querySelector('.admin-badge');
+        if (adminBadge) {
+            adminBadge.remove();
         }
     }
 }
