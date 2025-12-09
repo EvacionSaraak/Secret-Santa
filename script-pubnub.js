@@ -198,9 +198,38 @@ function setupAutocompleteForInput(input) {
     autocompleteDiv.id = `autocomplete-list-${input.id}`;
     input.parentNode.appendChild(autocompleteDiv);
     
+    // Create preview element for translucent auto-fill
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'autocomplete-preview';
+    previewDiv.id = `autocomplete-preview-${input.id}`;
+    input.parentNode.insertBefore(previewDiv, input);
+    
+    // Function to update preview text
+    function updatePreview(inputValue) {
+        if (!inputValue) {
+            previewDiv.textContent = '';
+            return;
+        }
+        
+        // Find the best matching participant (starting with the input)
+        const matches = participants.filter(name => 
+            name.toLowerCase().startsWith(inputValue.toLowerCase())
+        );
+        
+        if (matches.length > 0) {
+            const bestMatch = matches[0];
+            // Show the remaining part of the match
+            const previewText = bestMatch.substring(inputValue.length);
+            previewDiv.textContent = inputValue + previewText;
+        } else {
+            previewDiv.textContent = '';
+        }
+    }
+    
     input.addEventListener('input', function() {
         const val = this.value.trim();
         closeList(input);
+        updatePreview(val);
         if (!val) return;
         
         currentFocus = -1;
@@ -224,6 +253,7 @@ function setupAutocompleteForInput(input) {
             div.addEventListener('click', function() {
                 input.value = match;
                 closeList(input);
+                updatePreview('');
             });
             
             autocompleteDiv.appendChild(div);
@@ -235,7 +265,20 @@ function setupAutocompleteForInput(input) {
         let items = document.getElementById(listId);
         if (items) items = items.getElementsByClassName('autocomplete-item');
         
-        if (e.keyCode === 40) { // Down arrow
+        if (e.keyCode === 9 && previewDiv.textContent) { // Tab key - accept preview
+            e.preventDefault();
+            input.value = previewDiv.textContent;
+            updatePreview('');
+            closeList(input);
+        } else if (e.keyCode === 39 && previewDiv.textContent) { // Right arrow - accept preview
+            const cursorAtEnd = input.selectionStart === input.value.length;
+            if (cursorAtEnd) {
+                e.preventDefault();
+                input.value = previewDiv.textContent;
+                updatePreview('');
+                closeList(input);
+            }
+        } else if (e.keyCode === 40) { // Down arrow
             currentFocus++;
             addActive(items);
         } else if (e.keyCode === 38) { // Up arrow
@@ -613,6 +656,16 @@ function handleBoxClick(boxNumber) {
             alert('Cannot unpick a box. You already saw who you\'re gifting, it will be unfair to unpick and pick someone else.');
         }
     } else if (!box.picker) {
+        // Check if non-admin user already has a box selected
+        if (!isAdmin) {
+            for (let boxNum in boxes) {
+                if (boxes[boxNum].picker === currentUserName) {
+                    alert('You have already selected a box. You cannot change your selection.');
+                    return;
+                }
+            }
+        }
+        
         // Box is available - select it and show assignment
         publishMessage({
             type: 'select-box',
