@@ -34,9 +34,13 @@ let isAdmin = false;
 
 // DOM elements
 const nameModal = document.getElementById('nameModal');
+const changeNameModal = document.getElementById('changeNameModal');
 const mainContent = document.getElementById('mainContent');
 const userNameInput = document.getElementById('userNameInput');
+const changeNameInput = document.getElementById('changeNameInput');
 const submitNameBtn = document.getElementById('submitNameBtn');
+const submitChangeNameBtn = document.getElementById('submitChangeNameBtn');
+const cancelChangeNameBtn = document.getElementById('cancelChangeNameBtn');
 const currentUserNameSpan = document.getElementById('currentUserName');
 const boxGrid = document.getElementById('boxGrid');
 const downloadBtn = document.getElementById('downloadBtn');
@@ -132,12 +136,21 @@ function setupEventListeners() {
     });
     
     // Setup autocomplete for name input
-    setupAutocomplete();
+    setupAutocompleteForInput(userNameInput);
     
-    // Admin login button
+    // Setup autocomplete for change name input
+    setupAutocompleteForInput(changeNameInput);
+    
+    // Admin login button in modal
     const adminLoginBtn = document.getElementById('adminLoginBtn');
     if (adminLoginBtn) {
         adminLoginBtn.addEventListener('click', handleAdminLogin);
+    }
+    
+    // Admin login button in main header
+    const adminLoginBtnMain = document.getElementById('adminLoginBtnMain');
+    if (adminLoginBtnMain) {
+        adminLoginBtnMain.addEventListener('click', handleAdminLogin);
     }
     
     // Change name button
@@ -146,26 +159,35 @@ function setupEventListeners() {
         changeNameBtn.addEventListener('click', handleChangeName);
     }
     
+    // Change name modal buttons
+    submitChangeNameBtn.addEventListener('click', handleChangeNameSubmit);
+    cancelChangeNameBtn.addEventListener('click', () => {
+        changeNameModal.classList.add('hidden');
+        changeNameInput.value = '';
+    });
+    changeNameInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleChangeNameSubmit();
+    });
+    
     downloadBtn.addEventListener('click', downloadJSON);
     uploadBtn.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleUpload);
     resetBtn.addEventListener('click', handleReset);
 }
 
-// Setup autocomplete functionality for name input
-function setupAutocomplete() {
-    const input = userNameInput;
+// Setup autocomplete functionality for any input element
+function setupAutocompleteForInput(input) {
     let currentFocus = -1;
     
     // Create autocomplete container
     const autocompleteDiv = document.createElement('div');
     autocompleteDiv.className = 'autocomplete-items';
-    autocompleteDiv.id = 'autocomplete-list';
+    autocompleteDiv.id = `autocomplete-list-${input.id}`;
     input.parentNode.appendChild(autocompleteDiv);
     
     input.addEventListener('input', function() {
         const val = this.value.trim();
-        closeAllLists();
+        closeList(input);
         if (!val) return;
         
         currentFocus = -1;
@@ -188,7 +210,7 @@ function setupAutocomplete() {
             
             div.addEventListener('click', function() {
                 input.value = match;
-                closeAllLists();
+                closeList(input);
             });
             
             autocompleteDiv.appendChild(div);
@@ -196,7 +218,8 @@ function setupAutocomplete() {
     });
     
     input.addEventListener('keydown', function(e) {
-        let items = document.getElementById('autocomplete-list');
+        const listId = `autocomplete-list-${input.id}`;
+        let items = document.getElementById(listId);
         if (items) items = items.getElementsByClassName('autocomplete-item');
         
         if (e.keyCode === 40) { // Down arrow
@@ -227,17 +250,18 @@ function setupAutocomplete() {
         }
     }
     
-    function closeAllLists() {
-        const items = document.getElementsByClassName('autocomplete-items');
-        for (let item of items) {
-            item.innerHTML = '';
+    function closeList(inputElement) {
+        const listId = `autocomplete-list-${inputElement.id}`;
+        const list = document.getElementById(listId);
+        if (list) {
+            list.innerHTML = '';
         }
     }
     
     // Close autocomplete when clicking outside
     document.addEventListener('click', function(e) {
         if (e.target !== input) {
-            closeAllLists();
+            closeList(input);
         }
     });
 }
@@ -339,13 +363,30 @@ function handleChangeName() {
         return;
     }
     
-    const newName = prompt('Enter new name:', currentUserName);
-    if (!newName || newName.trim() === '') {
+    // Show change name modal
+    changeNameInput.value = '';
+    changeNameModal.classList.remove('hidden');
+    changeNameInput.focus();
+}
+
+function handleChangeNameSubmit() {
+    const newName = changeNameInput.value.trim();
+    
+    if (!newName) {
+        alert('Please select a name from the list.');
         return;
     }
     
-    const trimmedName = toCamelCase(newName.trim());
+    // Validate that the name is in participants list
+    const trimmedName = toCamelCase(newName);
+    if (!participants.includes(trimmedName)) {
+        alert('Please select a valid name from the participants list.');
+        return;
+    }
+    
     if (trimmedName === currentUserName) {
+        changeNameModal.classList.add('hidden');
+        changeNameInput.value = '';
         return; // No change
     }
     
@@ -378,6 +419,11 @@ function handleChangeName() {
     
     // Update display
     updateBoxDisplay();
+    
+    // Hide modal
+    changeNameModal.classList.add('hidden');
+    changeNameInput.value = '';
+}
 }
 
 function generateBoxes() {

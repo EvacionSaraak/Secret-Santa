@@ -24,6 +24,21 @@
         </div>
     </div>
 
+    <!-- Change Name Modal (shown when changing name) -->
+    <div id="changeNameModal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Change Your Name</h2>
+            <p>Please select your new name from the list:</p>
+            <div class="autocomplete-container">
+                <input type="text" id="changeNameInput" placeholder="Start typing your name..." autocomplete="off" />
+            </div>
+            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
+                <button id="submitChangeNameBtn" class="btn btn-primary">Update Name</button>
+                <button id="cancelChangeNameBtn" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div id="mainContent" class="hidden">
         <!-- Loading Overlay -->
@@ -38,10 +53,17 @@
         </div>
 
         <header class="header">
-            <h1>🎅 Secret Santa Box Picker</h1>
-            <p id="welcomeMessage">Welcome, <span id="currentUserName"></span>! <button id="changeNameBtn" class="btn-link">Change Name</button></p>
-            <div class="sync-status">
-                <span class="sync-indicator">●</span> Live updates enabled
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <div>
+                    <h1>🎅 Secret Santa Box Picker</h1>
+                    <p id="welcomeMessage">Welcome, <span id="currentUserName"></span>! <button id="changeNameBtn" class="btn-link">Change Name</button></p>
+                    <div class="sync-status">
+                        <span class="sync-indicator">●</span> Live updates enabled
+                    </div>
+                </div>
+                <div>
+                    <button id="adminLoginBtnMain" class="btn-admin-login" style="font-size: 0.9rem;">Admin Login</button>
+                </div>
             </div>
         </header>
 
