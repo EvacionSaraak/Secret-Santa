@@ -13,9 +13,14 @@
     <div id="nameModal" class="modal">
         <div class="modal-content">
             <h2>🎅 Welcome to Secret Santa!</h2>
-            <p>Please enter your name to continue:</p>
-            <input type="text" id="userNameInput" placeholder="Your Name" autofocus />
+            <p>Please select your name from the list to continue:</p>
+            <div class="autocomplete-container">
+                <input type="text" id="userNameInput" placeholder="Start typing your name..." autofocus autocomplete="off" />
+            </div>
             <button id="submitNameBtn" class="btn btn-primary">Continue</button>
+            <div class="admin-login-section">
+                <button id="adminLoginBtn" class="btn-admin-login">Admin Login</button>
+            </div>
         </div>
     </div>
 
@@ -43,6 +48,7 @@
         <div class="container">
             <div class="instructions">
                 <p><strong>🎁 How Secret Santa Works:</strong></p>
+                <p>Select your name from the participants list to begin.</p>
                 <p>Click on any available box to claim it and see who you're gifting to!</p>
                 <p>You can only select ONE box. Selecting a new box will automatically unselect your previous choice.</p>
                 <p>Once you select a box, you'll see the name of the person you should buy a gift for.</p>

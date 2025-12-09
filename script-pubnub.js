@@ -29,6 +29,7 @@ const CHANNEL_NAME = 'secret-santa-boxes';
 
 // Admin configuration
 const ADMIN_NAME = 'EvacionSaraak'; // Only admin can see all assignments
+const ADMIN_PASSWORD = 'SecretSanta2025!'; // Admin password (keep secret!)
 let isAdmin = false;
 
 // DOM elements
@@ -68,6 +69,15 @@ async function init() {
     generateBoxes();
 }
 
+// Helper function to convert name to Camel Case
+function toCamelCase(str) {
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
 // Load participants from participants.txt
 async function loadParticipants() {
     try {
@@ -75,7 +85,8 @@ async function loadParticipants() {
         const text = await response.text();
         participants = text.split('\n')
             .map(name => name.trim())
-            .filter(name => name.length > 0);
+            .filter(name => name.length > 0)
+            .map(name => toCamelCase(name)); // Convert all to Camel Case
         
         TOTAL_BOXES = participants.length;
         console.log(`Loaded ${TOTAL_BOXES} participants`);
@@ -120,6 +131,15 @@ function setupEventListeners() {
         if (e.key === 'Enter') handleNameSubmit();
     });
     
+    // Setup autocomplete for name input
+    setupAutocomplete();
+    
+    // Admin login button
+    const adminLoginBtn = document.getElementById('adminLoginBtn');
+    if (adminLoginBtn) {
+        adminLoginBtn.addEventListener('click', handleAdminLogin);
+    }
+    
     // Change name button
     const changeNameBtn = document.getElementById('changeNameBtn');
     if (changeNameBtn) {
@@ -132,16 +152,130 @@ function setupEventListeners() {
     resetBtn.addEventListener('click', handleReset);
 }
 
+// Setup autocomplete functionality for name input
+function setupAutocomplete() {
+    const input = userNameInput;
+    let currentFocus = -1;
+    
+    // Create autocomplete container
+    const autocompleteDiv = document.createElement('div');
+    autocompleteDiv.className = 'autocomplete-items';
+    autocompleteDiv.id = 'autocomplete-list';
+    input.parentNode.appendChild(autocompleteDiv);
+    
+    input.addEventListener('input', function() {
+        const val = this.value.trim();
+        closeAllLists();
+        if (!val) return;
+        
+        currentFocus = -1;
+        
+        // Find matching participants
+        const matches = participants.filter(name => 
+            name.toLowerCase().includes(val.toLowerCase())
+        );
+        
+        // Show top 5 matches
+        matches.slice(0, 5).forEach(match => {
+            const div = document.createElement('div');
+            div.className = 'autocomplete-item';
+            
+            // Highlight matching part
+            const startIndex = match.toLowerCase().indexOf(val.toLowerCase());
+            div.innerHTML = match.substring(0, startIndex) +
+                           `<strong>${match.substring(startIndex, startIndex + val.length)}</strong>` +
+                           match.substring(startIndex + val.length);
+            
+            div.addEventListener('click', function() {
+                input.value = match;
+                closeAllLists();
+            });
+            
+            autocompleteDiv.appendChild(div);
+        });
+    });
+    
+    input.addEventListener('keydown', function(e) {
+        let items = document.getElementById('autocomplete-list');
+        if (items) items = items.getElementsByClassName('autocomplete-item');
+        
+        if (e.keyCode === 40) { // Down arrow
+            currentFocus++;
+            addActive(items);
+        } else if (e.keyCode === 38) { // Up arrow
+            currentFocus--;
+            addActive(items);
+        } else if (e.keyCode === 13) { // Enter
+            e.preventDefault();
+            if (currentFocus > -1 && items) {
+                items[currentFocus].click();
+            }
+        }
+    });
+    
+    function addActive(items) {
+        if (!items) return;
+        removeActive(items);
+        if (currentFocus >= items.length) currentFocus = 0;
+        if (currentFocus < 0) currentFocus = items.length - 1;
+        items[currentFocus].classList.add('autocomplete-active');
+    }
+    
+    function removeActive(items) {
+        for (let item of items) {
+            item.classList.remove('autocomplete-active');
+        }
+    }
+    
+    function closeAllLists() {
+        const items = document.getElementsByClassName('autocomplete-items');
+        for (let item of items) {
+            item.innerHTML = '';
+        }
+    }
+    
+    // Close autocomplete when clicking outside
+    document.addEventListener('click', function(e) {
+        if (e.target !== input) {
+            closeAllLists();
+        }
+    });
+}
+
+// Handle admin login
+function handleAdminLogin() {
+    const password = prompt('Enter admin password:');
+    if (!password) return;
+    
+    if (password === ADMIN_PASSWORD) {
+        currentUserName = ADMIN_NAME;
+        isAdmin = true;
+        localStorage.setItem('secretSantaUserName', ADMIN_NAME);
+        showMainContent();
+    } else {
+        alert('Incorrect password!');
+    }
+}
+
 function handleNameSubmit() {
     const name = userNameInput.value.trim();
     if (name === '') {
-        alert('Please enter your name');
+        alert('Please select your name from the list');
         return;
     }
     
-    currentUserName = name;
-    isAdmin = (name === ADMIN_NAME);
-    localStorage.setItem('secretSantaUserName', name);
+    // Find closest match in participants list
+    const camelCaseName = toCamelCase(name);
+    const exactMatch = participants.find(p => p.toLowerCase() === camelCaseName.toLowerCase());
+    
+    if (!exactMatch) {
+        alert('Name not found in participants list. Please select from the suggested names.');
+        return;
+    }
+    
+    currentUserName = exactMatch; // Use exact match from participants
+    isAdmin = false; // Regular users cannot become admin via normal login
+    localStorage.setItem('secretSantaUserName', currentUserName);
     showMainContent();
 }
 
@@ -199,19 +333,24 @@ function updateAdminControls() {
 }
 
 function handleChangeName() {
-    const newName = prompt('Enter your new name:', currentUserName);
+    // Only admin can change names manually
+    if (!isAdmin) {
+        alert('Name changes are not allowed. Please contact the admin if you need to change your name.');
+        return;
+    }
+    
+    const newName = prompt('Enter new name:', currentUserName);
     if (!newName || newName.trim() === '') {
         return;
     }
     
-    const trimmedName = newName.trim();
+    const trimmedName = toCamelCase(newName.trim());
     if (trimmedName === currentUserName) {
         return; // No change
     }
     
     const oldName = currentUserName;
     currentUserName = trimmedName;
-    isAdmin = (trimmedName === ADMIN_NAME);
     
     // Update localStorage
     localStorage.setItem('secretSantaUserName', currentUserName);

@@ -66,6 +66,66 @@ body {
     border-color: #667eea;
 }
 
+/* Autocomplete Styles */
+.autocomplete-container {
+    position: relative;
+    width: 100%;
+    margin-bottom: 20px;
+}
+
+.autocomplete-items {
+    position: absolute;
+    border: 1px solid #d4d4d4;
+    border-top: none;
+    z-index: 99;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background: white;
+    border-radius: 0 0 8px 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.autocomplete-item {
+    padding: 12px;
+    cursor: pointer;
+    background-color: #fff;
+    border-bottom: 1px solid #d4d4d4;
+}
+
+.autocomplete-item:hover,
+.autocomplete-active {
+    background-color: #e9e9e9;
+}
+
+.autocomplete-item strong {
+    color: #667eea;
+}
+
+/* Admin Login Section */
+.admin-login-section {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.btn-admin-login {
+    background: #4a5568;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s ease;
+}
+
+.btn-admin-login:hover {
+    background: #2d3748;
+}
+
 /* Header */
 .header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -149,7 +209,8 @@ body {
 }
 
 .box {
-    aspect-ratio: 1;
+    min-height: 100px; /* Changed from aspect-ratio to min-height */
+    height: auto; /* Allow boxes to grow */
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -162,6 +223,8 @@ body {
     padding: 10px;
     text-align: center;
     position: relative;
+    word-wrap: break-word; /* Allow long names to wrap */
+    overflow-wrap: break-word;
 }
 
 .box:hover:not(.selected):not(.taken):not(.disabled) {
@@ -228,24 +291,37 @@ body {
 
 /* New box content styles */
 .box-content {
-    font-size: 0.85rem;
+    font-size: 0.75rem; /* Reduced from 0.85rem */
     word-break: break-word;
     max-width: 100%;
-    overflow: hidden;
+    overflow: visible; /* Changed from hidden to allow expansion */
+    white-space: normal; /* Allow text wrapping */
 }
 
 .box-picker {
-    font-size: 0.75rem;
+    font-size: 0.7rem; /* Reduced from 0.75rem */
     margin-bottom: 4px;
 }
 
 .box-assigned {
-    font-size: 0.9rem;
+    font-size: 0.75rem; /* Reduced from 0.9rem */
     font-weight: 600;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .box.selected .box-assigned {
     color: #ffd700;
+}
+
+.box-claimed {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: #718096;
+}
+
+.box-available {
+    font-size: 0.8rem;
 }
 
 .box.selected .box-picker {
