@@ -48,6 +48,9 @@ const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const resetBtn = document.getElementById('resetBtn');
 const clearUsersBtn = document.getElementById('clearUsersBtn');
+const showParticipantsBtn = document.getElementById('showParticipantsBtn');
+const participantsModal = document.getElementById('participantsModal');
+const closeParticipantsBtn = document.getElementById('closeParticipantsBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const connectionStatus = document.getElementById('connectionStatus');
 const syncIndicator = document.querySelector('.sync-indicator');
@@ -175,6 +178,10 @@ function setupEventListeners() {
     uploadInput.addEventListener('change', handleUpload);
     resetBtn.addEventListener('click', handleReset);
     clearUsersBtn.addEventListener('click', handleClearUsers);
+    showParticipantsBtn.addEventListener('click', showParticipants);
+    closeParticipantsBtn.addEventListener('click', () => {
+        participantsModal.classList.add('hidden');
+    });
 }
 
 // Setup autocomplete functionality for any input element
@@ -268,19 +275,64 @@ function setupAutocompleteForInput(input) {
     });
 }
 
-// Handle admin login
+// Handle admin login with hidden password input
 function handleAdminLogin() {
-    const password = prompt('Enter admin password:');
-    if (!password) return;
+    // Create a password modal
+    const passwordModal = document.createElement('div');
+    passwordModal.className = 'modal';
+    passwordModal.style.display = 'flex';
+    passwordModal.innerHTML = `
+        <div class="modal-content">
+            <h2>🔐 Admin Login</h2>
+            <p>Enter admin password:</p>
+            <input type="password" id="adminPasswordInput" placeholder="Password" autocomplete="off" style="width: 100%; padding: 0.5rem; margin: 1rem 0; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;" autofocus />
+            <div style="display: flex; gap: 0.5rem; justify-content: center;">
+                <button id="adminPasswordSubmit" class="btn btn-primary">Login</button>
+                <button id="adminPasswordCancel" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(passwordModal);
     
-    if (password === ADMIN_PASSWORD) {
-        currentUserName = ADMIN_NAME;
-        isAdmin = true;
-        localStorage.setItem('secretSantaUserName', ADMIN_NAME);
-        showMainContent();
-    } else {
-        alert('Incorrect password!');
-    }
+    const passwordInput = document.getElementById('adminPasswordInput');
+    const submitBtn = document.getElementById('adminPasswordSubmit');
+    const cancelBtn = document.getElementById('adminPasswordCancel');
+    
+    const handleSubmit = () => {
+        const password = passwordInput.value;
+        if (!password) {
+            alert('Please enter a password');
+            return;
+        }
+        
+        if (password === ADMIN_PASSWORD) {
+            currentUserName = ADMIN_NAME;
+            isAdmin = true;
+            localStorage.setItem('secretSantaUserName', ADMIN_NAME);
+            document.body.removeChild(passwordModal);
+            showMainContent();
+        } else {
+            alert('Incorrect password!');
+            passwordInput.value = '';
+            passwordInput.focus();
+        }
+    };
+    
+    const handleCancel = () => {
+        document.body.removeChild(passwordModal);
+    };
+    
+    submitBtn.addEventListener('click', handleSubmit);
+    cancelBtn.addEventListener('click', handleCancel);
+    passwordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            handleSubmit();
+        } else if (e.key === 'Escape') {
+            handleCancel();
+        }
+    });
+    
+    passwordInput.focus();
 }
 
 function handleNameSubmit() {
@@ -359,12 +411,7 @@ function updateAdminControls() {
 }
 
 function handleChangeName() {
-    // Only admin can change names manually
-    if (!isAdmin) {
-        alert('Name changes are not allowed. Please contact the admin if you need to change your name.');
-        return;
-    }
-    
+    // All users can change their names
     // Show change name modal
     changeNameInput.value = '';
     changeNameModal.classList.remove('hidden');
@@ -859,6 +906,58 @@ function handleClearUsers() {
     
     // Publish clear-users to all clients
     publishMessage({ type: 'clear-users' });
+}
+
+// Show participants list in a modal
+function showParticipants() {
+    const tableContainer = document.getElementById('participantsTableContainer');
+    
+    // Create table
+    let html = '<table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">';
+    html += '<thead><tr>';
+    html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">#</th>';
+    html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">Participant Name</th>';
+    
+    if (isAdmin) {
+        html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">Box Picked</th>';
+        html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">Gifting To</th>';
+    }
+    
+    html += '</tr></thead><tbody>';
+    
+    participants.forEach((participant, index) => {
+        html += '<tr>';
+        html += `<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${index + 1}</td>`;
+        html += `<td style="border: 1px solid #ddd; padding: 8px;">${participant}</td>`;
+        
+        if (isAdmin) {
+            // Find which box this participant picked
+            let pickedBox = '-';
+            let giftingTo = '-';
+            
+            for (let boxNum in boxes) {
+                if (boxes[boxNum].picker === participant) {
+                    pickedBox = boxNum;
+                    giftingTo = boxes[boxNum].assigned || '-';
+                    break;
+                }
+            }
+            
+            html += `<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${pickedBox}</td>`;
+            html += `<td style="border: 1px solid #ddd; padding: 8px;">${giftingTo}</td>`;
+        }
+        
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table>';
+    
+    if (!isAdmin) {
+        html += '<p style="margin-top: 1rem; color: #666; font-size: 0.9rem; text-align: center;"><em>As a participant, you can only see the list of names. Admin can see who picked which box and assignments.</em></p>';
+    }
+    
+    tableContainer.innerHTML = html;
+    participantsModal.classList.remove('hidden');
 }
 
 // Save current state to repository (manual for GitHub Pages - shows instructions)

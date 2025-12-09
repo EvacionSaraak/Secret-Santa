@@ -81,9 +81,12 @@ The application features a beautiful purple gradient interface where you can see
    - Paste your keys there
 
 3. **Add your participants**:
-   - Open `data/participants.txt`
+   - Open `data/participants.txt` in a text editor
    - Add one name per line (e.g., "Alice Johnson")
+   - **Important**: The number of participant names must equal the number of boxes
+   - The app will create one box for each participant
    - Save the file
+   - Commit the changes to your repository
 
 4. **Enable GitHub Pages**:
    - Go to your repository Settings → Pages
@@ -117,13 +120,39 @@ As the event organizer, you have special admin access:
 **Login:** Click "Admin Login" button (top-right) and enter password: `SecretSanta2025!`
 
 **What you can do:**
+- **View Participants**: Click "Show Participants" to see everyone in a table
+  - As admin: See who picked which box and their assignments
+  - Regular users only see the list of names (no assignment info)
 - See who everyone is gifting to (for troubleshooting)
 - Remove people from boxes if they picked wrong
 - Download/upload the complete state as JSON
 - Clear all users (useful before the real event starts)
-- Change participant names if needed
+- Change your name or any participant's name
 
-**Tip:** Change the admin password in `script-pubnub.js` (line ~12) for better security!
+**Tip:** Change the admin password in `script-pubnub.js` (line 32) for better security!
+
+### 📝 Managing Participants
+
+**To update the participant list:**
+
+1. Open `data/participants.txt` in a text editor
+2. Add or remove names (one per line)
+3. **Important**: The number of names must match the number of boxes you want
+4. Save the file
+5. Commit and push changes to your repository
+6. Refresh the application
+
+**Example participants.txt:**
+```
+Alice Johnson
+Bob Smith
+Carol Davis
+David Wilson
+```
+
+This creates 4 boxes with 4 random gift assignments.
+
+**Note:** If you change participants after boxes are selected, you may need to "Reset All" or "Clear All Users" to avoid mismatches.
 
 ---
 
@@ -169,7 +198,16 @@ A: Your selections are saved for 7 days with the free PubNub plan. Download a JS
 A: Nope! Once you pick a box, you can't unpick it. Fair play is enforced.
 
 **Q: What if someone picks the wrong box?**  
-A: The admin can remove them using the × button on their box.
+A: The admin can remove them using the × button on their box, or participants can click "Change Name" to update their identity.
+
+**Q: Can participants change their names?**  
+A: Yes! Any participant can click "Change Name" to select a different name from the participants list. This updates their box automatically.
+
+**Q: How do I view all participants?**  
+A: Click the "Show Participants" button. Regular users see just the list of names. Admin sees who picked which box and their gift assignments in a detailed table.
+
+**Q: How do I add or remove participants?**  
+A: Edit the `data/participants.txt` file, add or remove names (one per line), then commit the changes to your repository. The number of names must equal the number of boxes.
 
 **Q: Can I use this for a large group?**  
 A: Yes! It works with any number of participants. Just add all names to `data/participants.txt`.

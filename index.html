@@ -39,6 +39,17 @@
         </div>
     </div>
 
+    <!-- Participants Modal (shown when viewing participants) -->
+    <div id="participantsModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
+            <h2>📋 Participants List</h2>
+            <div id="participantsTableContainer"></div>
+            <div style="margin-top: 1rem; text-align: center;">
+                <button id="closeParticipantsBtn" class="btn btn-secondary">Close</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Main Content -->
     <div id="mainContent" class="hidden">
         <!-- Loading Overlay -->
@@ -82,6 +93,7 @@
             </div>
 
             <div class="actions">
+                <button id="showParticipantsBtn" class="btn btn-secondary">Show Participants</button>
                 <button id="downloadBtn" class="btn btn-secondary">Download JSON</button>
                 <button id="uploadBtn" class="btn btn-secondary">Upload JSON</button>
                 <input type="file" id="uploadInput" accept=".json" style="display: none;" />
