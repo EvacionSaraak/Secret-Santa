@@ -15,21 +15,29 @@
 </head>
 <body>
     <!-- Name Entry Modal (shown on first load) -->
-    <div id="nameModal" class="custom-modal">
+    <div id="nameModal" class="custom-modal modal-fade-in">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow-lg">
-                <div class="modal-header bg-gradient text-white">
-                    <h2 class="modal-title w-100 text-center mb-0">🎅 Welcome to Secret Santa!</h2>
-                </div>
-                <div class="modal-body p-4">
-                    <p class="text-center mb-3">Please select your name from the list to continue:</p>
-                    <div class="autocomplete-container">
-                        <input type="text" id="userNameInput" class="form-control form-control-lg" placeholder="Start typing your name..." autofocus autocomplete="off" />
+            <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden modal-scale-in">
+                <div class="modal-header bg-gradient text-white border-0 py-4">
+                    <div class="w-100 text-center">
+                        <div class="modal-icon mb-3">🎅</div>
+                        <h2 class="modal-title mb-0 fw-bold">Welcome to Secret Santa!</h2>
                     </div>
-                    <button id="submitNameBtn" class="btn btn-primary btn-lg w-100 mb-3">Continue</button>
-                    <div class="text-center">
-                        <button id="adminLoginBtn" class="btn btn-outline-secondary">
-                            <i class="bi bi-shield-lock"></i> Admin Login
+                </div>
+                <div class="modal-body p-4 p-md-5">
+                    <p class="text-center text-muted mb-4 fs-6">Please select your name from the list to continue:</p>
+                    <div class="autocomplete-container mb-4">
+                        <label for="userNameInput" class="form-label fw-semibold">
+                            <i class="bi bi-person-circle me-2"></i>Your Name
+                        </label>
+                        <input type="text" id="userNameInput" class="form-control form-control-lg rounded-3 shadow-sm" placeholder="Start typing your name..." autofocus autocomplete="off" />
+                    </div>
+                    <button id="submitNameBtn" class="btn btn-primary btn-lg w-100 mb-3 rounded-3 py-3 shadow-sm">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Continue
+                    </button>
+                    <div class="text-center pt-3 border-top">
+                        <button id="adminLoginBtn" class="btn btn-outline-secondary rounded-3 px-4">
+                            <i class="bi bi-shield-lock me-2"></i>Admin Login
                         </button>
                     </div>
                 </div>
@@ -38,38 +46,53 @@
     </div>
 
     <!-- Change Name Modal (shown when changing name) -->
-    <div id="changeNameModal" class="custom-modal hidden">
+    <div id="changeNameModal" class="custom-modal hidden modal-fade-in">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content shadow-lg">
-                <div class="modal-header">
-                    <h5 class="modal-title">Change Your Name</h5>
-                </div>
-                <div class="modal-body">
-                    <p>Please select your new name from the list:</p>
-                    <div class="autocomplete-container">
-                        <input type="text" id="changeNameInput" class="form-control" placeholder="Start typing your name..." autocomplete="off" />
+            <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden modal-scale-in">
+                <div class="modal-header bg-light border-0 py-4">
+                    <div class="w-100">
+                        <div class="modal-icon-small mb-2">✏️</div>
+                        <h5 class="modal-title mb-0 fw-bold">Change Your Name</h5>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button id="submitChangeNameBtn" class="btn btn-primary">Update Name</button>
-                    <button id="cancelChangeNameBtn" class="btn btn-secondary">Cancel</button>
+                <div class="modal-body p-4 p-md-5">
+                    <p class="text-muted mb-4">Please select your new name from the list:</p>
+                    <div class="autocomplete-container">
+                        <label for="changeNameInput" class="form-label fw-semibold">
+                            <i class="bi bi-person-badge me-2"></i>New Name
+                        </label>
+                        <input type="text" id="changeNameInput" class="form-control form-control-lg rounded-3 shadow-sm" placeholder="Start typing your name..." autocomplete="off" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light p-4">
+                    <button id="submitChangeNameBtn" class="btn btn-primary px-4 rounded-3">
+                        <i class="bi bi-check-circle me-2"></i>Update Name
+                    </button>
+                    <button id="cancelChangeNameBtn" class="btn btn-outline-secondary px-4 rounded-3">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- Participants Modal (shown when viewing participants) -->
-    <div id="participantsModal" class="custom-modal hidden">
+    <div id="participantsModal" class="custom-modal hidden modal-fade-in">
         <div class="modal-dialog modal-dialog-centered modal-lg">
-            <div class="modal-content shadow-lg">
-                <div class="modal-header">
-                    <h5 class="modal-title">📋 Participants List</h5>
+            <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden modal-scale-in">
+                <div class="modal-header bg-gradient text-white border-0 py-4">
+                    <div class="w-100">
+                        <div class="modal-icon-small mb-2">📋</div>
+                        <h5 class="modal-title mb-0 fw-bold">Participants List</h5>
+                    </div>
                 </div>
-                <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                    <div id="participantsTableContainer"></div>
+                <div class="modal-body p-4" style="max-height: 60vh; overflow-y: auto;">
+                    <div id="participantsTableContainer" class="table-responsive"></div>
                 </div>
-                <div class="modal-footer">
-                    <button id="closeParticipantsBtn" class="btn btn-secondary">Close</button>
+                <div class="modal-footer border-0 bg-light p-4">
+                    <button id="closeParticipantsBtn" class="btn btn-secondary px-5 rounded-3">
+                        <i class="bi bi-x-circle me-2"></i>Close
+                    </button>
                 </div>
             </div>
         </div>

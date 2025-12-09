@@ -283,16 +283,33 @@ function setupAutocompleteForInput(input) {
 function handleAdminLogin() {
     // Create a password modal
     const passwordModal = document.createElement('div');
-    passwordModal.className = 'modal';
-    passwordModal.style.display = 'flex';
+    passwordModal.className = 'custom-modal modal-fade-in';
     passwordModal.innerHTML = `
-        <div class="modal-content">
-            <h2>🔐 Admin Login</h2>
-            <p>Enter admin password:</p>
-            <input type="password" id="adminPasswordInput" placeholder="Password" autocomplete="off" style="width: 100%; padding: 0.5rem; margin: 1rem 0; font-size: 1rem; border: 1px solid #ccc; border-radius: 4px;" autofocus />
-            <div style="display: flex; gap: 0.5rem; justify-content: center;">
-                <button id="adminPasswordSubmit" class="btn btn-primary">Login</button>
-                <button id="adminPasswordCancel" class="btn btn-secondary">Cancel</button>
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden modal-scale-in">
+                <div class="modal-header bg-gradient text-white border-0 py-4">
+                    <div class="w-100 text-center">
+                        <div class="modal-icon-small mb-2">🔐</div>
+                        <h5 class="modal-title mb-0 fw-bold">Admin Login</h5>
+                    </div>
+                </div>
+                <div class="modal-body p-4 p-md-5">
+                    <p class="text-muted mb-4">Enter your admin password to continue:</p>
+                    <div class="mb-4">
+                        <label for="adminPasswordInput" class="form-label fw-semibold">
+                            <i class="bi bi-key me-2"></i>Password
+                        </label>
+                        <input type="password" id="adminPasswordInput" class="form-control form-control-lg rounded-3 shadow-sm" placeholder="Enter admin password" autocomplete="off" autofocus />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 bg-light p-4">
+                    <button id="adminPasswordSubmit" class="btn btn-primary px-5 rounded-3">
+                        <i class="bi bi-check-circle me-2"></i>Login
+                    </button>
+                    <button id="adminPasswordCancel" class="btn btn-outline-secondary px-4 rounded-3">
+                        <i class="bi bi-x-circle me-2"></i>Cancel
+                    </button>
+                </div>
             </div>
         </div>
     `;
