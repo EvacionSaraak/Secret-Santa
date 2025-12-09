@@ -520,6 +520,10 @@ function generateBoxes() {
     boxGrid.innerHTML = '';
     
     for (let i = 1; i <= TOTAL_BOXES; i++) {
+        // Create Bootstrap column
+        const col = document.createElement('div');
+        col.className = 'col-4 col-sm-3 col-md-2 col-lg-1';
+        
         const box = document.createElement('div');
         box.className = 'box';
         box.dataset.boxNumber = i;
@@ -548,7 +552,8 @@ function generateBoxes() {
             box.appendChild(removeBtn);
         }
         
-        boxGrid.appendChild(box);
+        col.appendChild(box);
+        boxGrid.appendChild(col);
     }
     
     updateBoxDisplay();
@@ -952,23 +957,23 @@ function handleClearUsers() {
 function showParticipants() {
     const tableContainer = document.getElementById('participantsTableContainer');
     
-    // Create table
-    let html = '<table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">';
-    html += '<thead><tr>';
-    html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">#</th>';
-    html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">Participant Name</th>';
+    // Create Bootstrap table
+    let html = '<table class="table table-striped table-hover">';
+    html += '<thead class="table-light"><tr>';
+    html += '<th scope="col" class="text-center">#</th>';
+    html += '<th scope="col">Participant Name</th>';
     
     if (isAdmin) {
-        html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">Box Picked</th>';
-        html += '<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2;">Gifting To</th>';
+        html += '<th scope="col" class="text-center">Box Picked</th>';
+        html += '<th scope="col">Gifting To</th>';
     }
     
     html += '</tr></thead><tbody>';
     
     participants.forEach((participant, index) => {
         html += '<tr>';
-        html += `<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${index + 1}</td>`;
-        html += `<td style="border: 1px solid #ddd; padding: 8px;">${participant}</td>`;
+        html += `<td class="text-center">${index + 1}</td>`;
+        html += `<td>${participant}</td>`;
         
         if (isAdmin) {
             // Find which box this participant picked
@@ -983,8 +988,8 @@ function showParticipants() {
                 }
             }
             
-            html += `<td style="border: 1px solid #ddd; padding: 8px; text-align: center;">${pickedBox}</td>`;
-            html += `<td style="border: 1px solid #ddd; padding: 8px;">${giftingTo}</td>`;
+            html += `<td class="text-center"><span class="badge ${pickedBox === '-' ? 'bg-secondary' : 'bg-primary'}">${pickedBox}</span></td>`;
+            html += `<td>${giftingTo}</td>`;
         }
         
         html += '</tr>';
@@ -993,7 +998,7 @@ function showParticipants() {
     html += '</tbody></table>';
     
     if (!isAdmin) {
-        html += '<p style="margin-top: 1rem; color: #666; font-size: 0.9rem; text-align: center;"><em>As a participant, you can only see the list of names. Admin can see who picked which box and assignments.</em></p>';
+        html += '<div class="alert alert-info mt-3" role="alert"><small><i class="bi bi-info-circle"></i> As a participant, you can only see the list of names. Admin can see who picked which box and assignments.</small></div>';
     }
     
     tableContainer.innerHTML = html;

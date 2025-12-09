@@ -4,48 +4,73 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Secret Santa - Box Picker</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <!-- Custom CSS (loaded after Bootstrap) -->
     <link rel="stylesheet" href="src/css/styles.css">
     <!-- PubNub for real-time communication -->
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.4.0.min.js"></script>
 </head>
 <body>
     <!-- Name Entry Modal (shown on first load) -->
-    <div id="nameModal" class="modal">
-        <div class="modal-content">
-            <h2>🎅 Welcome to Secret Santa!</h2>
-            <p>Please select your name from the list to continue:</p>
-            <div class="autocomplete-container">
-                <input type="text" id="userNameInput" placeholder="Start typing your name..." autofocus autocomplete="off" />
-            </div>
-            <button id="submitNameBtn" class="btn btn-primary">Continue</button>
-            <div class="admin-login-section">
-                <button id="adminLoginBtn" class="btn-admin-login">Admin Login</button>
+    <div id="nameModal" class="custom-modal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header bg-gradient text-white">
+                    <h2 class="modal-title w-100 text-center mb-0">🎅 Welcome to Secret Santa!</h2>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="text-center mb-3">Please select your name from the list to continue:</p>
+                    <div class="autocomplete-container">
+                        <input type="text" id="userNameInput" class="form-control form-control-lg" placeholder="Start typing your name..." autofocus autocomplete="off" />
+                    </div>
+                    <button id="submitNameBtn" class="btn btn-primary btn-lg w-100 mb-3">Continue</button>
+                    <div class="text-center">
+                        <button id="adminLoginBtn" class="btn btn-outline-secondary">
+                            <i class="bi bi-shield-lock"></i> Admin Login
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Change Name Modal (shown when changing name) -->
-    <div id="changeNameModal" class="modal hidden">
-        <div class="modal-content">
-            <h2>Change Your Name</h2>
-            <p>Please select your new name from the list:</p>
-            <div class="autocomplete-container">
-                <input type="text" id="changeNameInput" placeholder="Start typing your name..." autocomplete="off" />
-            </div>
-            <div style="margin-top: 1rem; display: flex; gap: 0.5rem; justify-content: center;">
-                <button id="submitChangeNameBtn" class="btn btn-primary">Update Name</button>
-                <button id="cancelChangeNameBtn" class="btn btn-secondary">Cancel</button>
+    <div id="changeNameModal" class="custom-modal hidden">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title">Change Your Name</h5>
+                </div>
+                <div class="modal-body">
+                    <p>Please select your new name from the list:</p>
+                    <div class="autocomplete-container">
+                        <input type="text" id="changeNameInput" class="form-control" placeholder="Start typing your name..." autocomplete="off" />
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="submitChangeNameBtn" class="btn btn-primary">Update Name</button>
+                    <button id="cancelChangeNameBtn" class="btn btn-secondary">Cancel</button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Participants Modal (shown when viewing participants) -->
-    <div id="participantsModal" class="modal hidden">
-        <div class="modal-content" style="max-width: 800px; max-height: 80vh; overflow-y: auto;">
-            <h2>📋 Participants List</h2>
-            <div id="participantsTableContainer"></div>
-            <div style="margin-top: 1rem; text-align: center;">
-                <button id="closeParticipantsBtn" class="btn btn-secondary">Close</button>
+    <div id="participantsModal" class="custom-modal hidden">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content shadow-lg">
+                <div class="modal-header">
+                    <h5 class="modal-title">📋 Participants List</h5>
+                </div>
+                <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+                    <div id="participantsTableContainer"></div>
+                </div>
+                <div class="modal-footer">
+                    <button id="closeParticipantsBtn" class="btn btn-secondary">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -63,49 +88,72 @@
             </div>
         </div>
 
-        <header class="header">
-            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                <div>
-                    <h1>🎅 Secret Santa Box Picker</h1>
-                    <p id="welcomeMessage">Welcome, <span id="currentUserName"></span>! <button id="changeNameBtn" class="btn-link">Change Name</button></p>
-                    <div class="sync-status">
-                        <span class="sync-indicator">●</span> Live updates enabled
+        <header class="header mb-4">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-12 col-md-8">
+                        <h1 class="mb-2">🎅 Secret Santa Box Picker</h1>
+                        <p id="welcomeMessage" class="mb-1">
+                            Welcome, <span id="currentUserName" class="fw-bold text-warning"></span>! 
+                            <button id="changeNameBtn" class="btn btn-link btn-sm p-0 ms-2 text-white text-decoration-underline">Change Name</button>
+                        </p>
+                        <div class="sync-status">
+                            <span class="sync-indicator"><i class="bi bi-circle-fill"></i></span> Live updates enabled
+                        </div>
                     </div>
-                </div>
-                <div>
-                    <button id="adminLoginBtnMain" class="btn-admin-login" style="font-size: 0.9rem;">Admin Login</button>
-                    <button id="adminLogoutBtn" class="btn-admin-logout hidden" style="font-size: 0.9rem; margin-left: 0.5rem;">Logout</button>
+                    <div class="col-12 col-md-4 text-md-end mt-3 mt-md-0">
+                        <button id="adminLoginBtnMain" class="btn btn-outline-light btn-sm">
+                            <i class="bi bi-shield-lock"></i> Admin Login
+                        </button>
+                        <button id="adminLogoutBtn" class="btn btn-outline-warning btn-sm ms-2 hidden">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
 
-        <div class="container">
-            <div class="instructions">
-                <p><strong>🎁 How Secret Santa Works:</strong></p>
-                <p>Select your name from the participants list to begin.</p>
-                <p>Click on any available box to claim it and see who you're gifting to!</p>
-                <p>You can only select ONE box. Selecting a new box will automatically unselect your previous choice.</p>
-                <p>Once you select a box, you'll see the name of the person you should buy a gift for.</p>
-                <p><em>Privacy: Only you can see who you're gifting to. Others only see "Claimed" on boxes.</em></p>
+        <div class="container-fluid px-3 px-md-4">
+            <div class="card shadow-sm mb-4 instructions-card">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-gift"></i> How Secret Santa Works:</h5>
+                    <ul class="list-unstyled mb-0">
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Select your name from the participants list to begin.</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Click on any available box to claim it and see who you're gifting to!</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> You can only select ONE box. Selecting a new box will automatically unselect your previous choice.</li>
+                        <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Once you select a box, you'll see the name of the person you should buy a gift for.</li>
+                        <li class="mb-0"><i class="bi bi-shield-check text-primary"></i> <em>Privacy: Only you can see who you're gifting to. Others only see "Claimed" on boxes.</em></li>
+                    </ul>
+                </div>
             </div>
 
-            <div class="actions" style="margin-bottom: 1.5rem;">
-                <button id="showParticipantsBtn" class="btn btn-secondary">Show Participants</button>
+            <div class="mb-3 text-center">
+                <button id="showParticipantsBtn" class="btn btn-info btn-lg">
+                    <i class="bi bi-people-fill"></i> Show Participants
+                </button>
             </div>
 
-            <div id="boxGrid" class="box-grid">
+            <div id="boxGrid" class="row g-2 g-md-3">
                 <!-- Boxes will be generated by JavaScript -->
             </div>
 
-            <div class="actions admin-actions">
-                <button id="downloadBtn" class="btn btn-secondary">Download JSON</button>
-                <button id="uploadBtn" class="btn btn-secondary">Upload JSON</button>
-                <input type="file" id="uploadInput" accept=".json" style="display: none;" />
-                <button id="clearUsersBtn" class="btn btn-danger">Clear All Users</button>
+            <div class="mt-4 text-center admin-actions">
+                <button id="downloadBtn" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-download"></i> Download JSON
+                </button>
+                <button id="uploadBtn" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-upload"></i> Upload JSON
+                </button>
+                <input type="file" id="uploadInput" accept=".json" class="d-none" />
+                <button id="clearUsersBtn" class="btn btn-danger">
+                    <i class="bi bi-trash"></i> Clear All Users
+                </button>
             </div>
         </div>
     </div>
 
+    <!-- Bootstrap JS Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script-pubnub.js"></script>
 </body>
 </html>
