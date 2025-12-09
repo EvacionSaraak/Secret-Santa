@@ -1,19 +1,31 @@
-# Secret-Santa
-A real-time Secret Santa gift assignment system with live updates across all users.
+# 🎅 Secret Santa Box Picker
+
+A fun and easy way to organize your Secret Santa gift exchange! Pick a box, discover who you're gifting to, and enjoy the surprise with your friends and family.
 
 ![Secret Santa Box Picker Preview](https://github.com/user-attachments/assets/7f9685f9-a090-4f55-ab1f-9d8c449fc547)
 
-## Features
-- **Real-time synchronization**: See updates immediately when anyone selects a box
-- **Gift assignments**: Each box reveals who you should gift to when selected
-- **Privacy protection**: Only you and admin can see who you're gifting to
-- **One box per user**: Each user can only select one box at a time
-- **Participant validation**: Only authorized participants can log in via autocomplete
-- **Admin controls**: Full visibility and management for event organizer
-- **Autocomplete selection**: Easy name selection from participants list
-- **Camel Case formatting**: All names displayed consistently
-- **Dynamic box sizing**: Boxes auto-expand for long names
-- **Multiple deployment options**: GitHub Pages, Local, or Cloudflare Workers
+## ✨ What is this?
+
+A real-time Secret Santa gift assignment system where everyone picks a box and discovers who they'll be buying a gift for! All selections are synchronized instantly across all devices, so everyone sees updates in real-time.
+
+## 🎁 How It Works (For Participants)
+
+1. **Open the link** your event organizer shared with you
+2. **Type your name** in the box - autocomplete will help you find it
+3. **Click any available box** to claim it
+4. **See your assignment!** You'll instantly see who you're buying a gift for
+5. **Keep it secret!** Only you (and the organizer) can see your assignment
+
+That's it! Super simple. 🎉
+
+## 🌟 Features
+
+- ✅ **Instant updates**: See when others pick boxes in real-time
+- ✅ **Secret assignments**: Only you see who you're gifting to
+- ✅ **Easy to use**: Just type your name and click a box
+- ✅ **Fair play**: Can't unpick once you see your assignment
+- ✅ **Works everywhere**: Phone, tablet, or computer
+- ✅ **No installation**: Just click the link and go!
 
 ## Project Structure
 
@@ -44,114 +56,173 @@ Secret-Santa/
 └── backups/                   # Backup/old files
 ```
 
-## Preview
+## 📱 Preview
 
-The application features a beautiful gradient interface where users can see all boxes in a grid layout. Selected boxes are highlighted in purple with the picker's name (for admin) or "Claimed" (for regular users).
+The application features a beautiful purple gradient interface where you can see all boxes in a grid layout. When you pick a box, it highlights in purple with your name!
 
 ![Multi-user real-time updates](https://github.com/user-attachments/assets/51f7f485-2ada-4c64-bf7d-32dbem97fe2d)
 
-## Quick Start Options
+---
 
-### Option 1: GitHub Pages (Recommended - No npm required!)
+## 🚀 For Event Organizers: Setup Guide
 
-Perfect if you want to deploy without installing anything:
+### Quick Setup (No technical skills needed!)
 
-1. **Get free PubNub API keys**: [https://www.pubnub.com/](https://www.pubnub.com/)
-2. **Update** `script-pubnub.js` with your keys (lines 9-10)
-3. **Edit** `data/participants.txt` with your participant names (one per line)
-4. **Enable GitHub Pages** in repository Settings → Pages
-5. **Done!** Your app is live at `https://[username].github.io/[repository]/`
+**What you'll need:** A free PubNub account (takes 2 minutes to set up)
 
-📖 **Detailed guide**: See [docs/SETUP_GITHUB_PAGES.md](docs/SETUP_GITHUB_PAGES.md)
+1. **Get PubNub API keys** (free): [https://www.pubnub.com/](https://www.pubnub.com/)
+   - Sign up for a free account
+   - Create a new app
+   - Copy your Publish Key and Subscribe Key
 
-### Option 2: Local Development
+2. **Update the keys in your code**:
+   - Open `script-pubnub.js` in a text editor
+   - Find lines 9-10
+   - Paste your keys there
 
-For quick local testing with WebSocket support:
+3. **Add your participants**:
+   - Open `data/participants.txt`
+   - Add one name per line (e.g., "Alice Johnson")
+   - Save the file
 
-1. Install dependencies:
+4. **Enable GitHub Pages**:
+   - Go to your repository Settings → Pages
+   - Select your branch (usually `main` or `copilot/add-live-updates-feature`)
+   - Click Save
+   - Wait 1-2 minutes
+
+5. **Share the link!**
+   - Your Secret Santa is live at: `https://[your-username].github.io/[repository]/`
+   - Share this link with all participants
+
+### ⏰ Data Retention
+
+**Your selections are saved for 7 days** thanks to PubNub Message Persistence (free tier).
+
+**Important:** Since the free PubNub tier keeps data for 7 days:
+- Run your event within 7 days of the first selection
+- Admin should download JSON backups regularly (just in case)
+- Perfect for events running through the holiday season
+
+**Backing up your data:**
+1. Login as admin
+2. Click "Download JSON" button
+3. Save the file to your computer
+4. If data is lost, use "Upload JSON" to restore
+
+### 👑 Admin Powers
+
+As the event organizer, you have special admin access:
+
+**Login:** Click "Admin Login" button (top-right) and enter password: `SecretSanta2025!`
+
+**What you can do:**
+- See who everyone is gifting to (for troubleshooting)
+- Remove people from boxes if they picked wrong
+- Download/upload the complete state as JSON
+- Clear all users (useful before the real event starts)
+- Change participant names if needed
+
+**Tip:** Change the admin password in `script-pubnub.js` (line ~12) for better security!
+
+---
+
+## 🛠️ Advanced Options (Optional)
+
+### Local Development (For Testing)
+
+Test the app on your computer before deploying:
+
 ```bash
 npm install
-```
-
-2. Run the local development server:
-```bash
 npm run dev:local
 ```
 
-3. Open your browser to: `http://localhost:3000`
+Open `http://localhost:3000` in your browser.
 
-### Option 3: Cloudflare Workers (Production)
+### Cloudflare Workers (Permanent Storage)
 
-For production deployment with persistent state:
+For production deployment with unlimited data retention:
 
-1. Install Wrangler globally:
 ```bash
 npm install -g wrangler
-```
-
-2. Login to Cloudflare:
-```bash
 wrangler login
-```
-
-3. Build and deploy:
-```bash
 npm run deploy
 ```
 
-📖 **Detailed guide**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
+📖 **Full guide**: See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
-## Customizing Participants
+---
 
-Edit `data/participants.txt` - one name per line:
+## 📚 Documentation
+
+- [Quick Setup Guide](docs/SETUP_GITHUB_PAGES.md) - Step-by-step with screenshots
+- [Cloudflare Deployment](docs/DEPLOYMENT.md) - Advanced production setup
+- [Technical Details](docs/IMPLEMENTATION_SUMMARY.md) - For developers
+
+## 💡 Frequently Asked Questions
+
+**Q: How long does my data last?**  
+A: Your selections are saved for 7 days with the free PubNub plan. Download a JSON backup for longer storage.
+
+**Q: Can people cheat and see multiple assignments?**  
+A: Nope! Once you pick a box, you can't unpick it. Fair play is enforced.
+
+**Q: What if someone picks the wrong box?**  
+A: The admin can remove them using the × button on their box.
+
+**Q: Can I use this for a large group?**  
+A: Yes! It works with any number of participants. Just add all names to `data/participants.txt`.
+
+**Q: Is my data secure?**  
+A: The app uses PubNub's encrypted channels. Only participants in your list can access the event.
+
+**Q: Do I need to pay anything?**  
+A: Nope! The free PubNub tier works perfectly for Secret Santa events.
+
+---
+
+## 🎄 Project Structure (For Developers)
 
 ```
-Alice Johnson
-Bob Smith
-Carol Williams
-...
+Secret-Santa/
+├── index.html                  # Main application file
+├── script-pubnub.js           # PubNub integration script
+├── package.json               # NPM configuration
+├── README.md                  # This file
+├── src/                       # Source files
+│   ├── css/                   # Stylesheets
+│   │   └── styles.css        # Main styles
+│   └── js/                    # JavaScript files
+│       └── dev-server.js     # Local development server
+├── data/                      # Data files
+│   ├── participants.txt      # List of all participants (edit this!)
+│   ├── secret-santa-state.json  # Example state structure
+│   └── sample-event.json     # Sample event data
+├── docs/                      # Documentation
+│   ├── DEPLOYMENT.md         # Cloudflare deployment guide
+│   ├── SETUP_GITHUB_PAGES.md # Quick GitHub Pages setup
+│   ├── GITHUB_PAGES_SETUP.md # Comprehensive Pages guide
+│   └── IMPLEMENTATION_SUMMARY.md  # Technical details
+├── cloudflare/                # Cloudflare Workers files
+│   ├── worker.js             # Worker with Durable Objects
+│   ├── build.js              # Build script
+│   └── wrangler.toml         # Wrangler configuration
+└── backups/                   # Backup/old files
 ```
 
-- Total boxes will automatically equal total participants
-- Names are auto-converted to Camel Case
-- Commit changes to repository for GitHub Pages deployment
-
-## Admin Access
-
-**Admin Username:** `EvacionSaraak` (hardcoded)  
-**Admin Password:** `SecretSanta2025!` (configurable in script-pubnub.js)
-
-Admin can:
-- See all picker names and assignments
-- Remove users from boxes
-- Download/upload JSON state
-- Reset all selections
-- Change user names
-
-**Admin Login Button:** Always visible in top-right corner of header
-
-## How It Works
-
-1. **Participants** select their name from autocomplete dropdown
-2. **Click a box** to claim it and see gift assignment
-3. **Privacy**: Only picker and admin see the assignment
-4. **Real-time**: All changes sync instantly via PubNub
-5. **One box per user**: Selecting new box auto-unselects previous
-
-## Documentation
-
-- [Quick GitHub Pages Setup](docs/SETUP_GITHUB_PAGES.md) - 5-minute guide
-- [Comprehensive GitHub Pages Guide](docs/GITHUB_PAGES_SETUP.md) - Detailed instructions
-- [Cloudflare Workers Deployment](docs/DEPLOYMENT.md) - Production deployment
-- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md) - Technical details
-
-## Technologies
+## 🔧 Technologies
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
 - **Real-time**: PubNub (GitHub Pages) or WebSocket (Cloudflare Workers)
+- **Data Persistence**: PubNub Message Persistence (7 days, free tier)
 - **State Management**: Durable Objects (Cloudflare) or in-memory (local)
 - **Deployment**: GitHub Pages, Cloudflare Workers, or local Node.js
 
-## License
+## 📝 License
 
-MIT License - See LICENSE file for details
+MIT License - Feel free to use this for your Secret Santa events!
+
+---
+
+**Made with ❤️ for spreading holiday cheer! 🎅🎁**
