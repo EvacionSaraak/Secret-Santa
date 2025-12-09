@@ -508,6 +508,27 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
+/* Change Name Button - Make it more obvious */
+#changeNameBtn {
+    font-weight: 600;
+    transition: all 0.3s ease;
+    animation: pulseGlow 2s ease-in-out infinite;
+}
+
+#changeNameBtn:hover {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.5);
+}
+
+@keyframes pulseGlow {
+    0%, 100% {
+        box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+    }
+    50% {
+        box-shadow: 0 2px 12px rgba(255, 193, 7, 0.6);
+    }
+}
+
 /* Admin Styles */
 .admin-badge {
     display: inline-block;
