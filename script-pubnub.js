@@ -32,6 +32,7 @@ const downloadBtn = document.getElementById('downloadBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const clearUsersBtn = document.getElementById('clearUsersBtn');
+const scrambleBtn = document.getElementById('scrambleBtn');
 const showParticipantsBtn = document.getElementById('showParticipantsBtn');
 const participantsModal = document.getElementById('participantsModal');
 const closeParticipantsBtn = document.getElementById('closeParticipantsBtn');
@@ -244,6 +245,7 @@ function setupEventListeners() {
     uploadBtn.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleUpload);
     clearUsersBtn.addEventListener('click', handleClearUsers);
+    scrambleBtn.addEventListener('click', handleScramble);
     showParticipantsBtn.addEventListener('click', showParticipants);
     closeParticipantsBtn.addEventListener('click', () => {
         participantsModal.classList.add('hidden');
@@ -1074,6 +1076,19 @@ function handleMessage(message) {
             });
             break;
         
+        case 'scramble-boxes':
+            // Scramble assignments - update box assignments from admin
+            boxes = message.boxes || {};
+            updateBoxDisplay();
+            
+            // Save to Firebase with logging
+            saveBoxesToFirebase('scramble-boxes', currentUserName, {
+                totalBoxes: Object.keys(boxes).length
+            });
+            
+            alert('🔀 Admin has scrambled the box assignments! Your assignment may have changed.');
+            break;
+        
         case 'name-change':
             // Update all boxes that had the old picker name with the new name
             if (message.boxes) {
@@ -1199,12 +1214,67 @@ function handleUpload(event) {
 function handleClearUsers() {
     if (!isAdmin) return;
     
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to clear all users:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Action cancelled.');
+        return;
+    }
+    
     if (!confirm('Are you sure you want to CLEAR ALL USERS? This will remove all pickers from all boxes but keep the gift assignments intact.\n\nThis is useful for clearing old test data before the real event.')) {
         return;
     }
     
     // Publish clear-users to all clients
     publishMessage({ type: 'clear-users' });
+}
+
+// Handle scramble button - reshuffles box assignments (admin only)
+function handleScramble() {
+    if (!isAdmin) return;
+    
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to scramble assignments:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Action cancelled.');
+        return;
+    }
+    
+    if (!confirm('🔀 SCRAMBLE ASSIGNMENTS\n\nThis will completely re-randomize who is assigned to each box number.\n\n⚠️ WARNING: This will affect EVERYONE\'s assignments!\n\nAre you absolutely sure you want to do this?')) {
+        return;
+    }
+    
+    // Create a fresh shuffled list of participants
+    const shuffled = [...participants];
+    
+    // Fisher-Yates shuffle
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Re-assign each box while keeping who picked it
+    for (let i = 1; i <= TOTAL_BOXES; i++) {
+        if (boxes[i]) {
+            boxes[i].assigned = shuffled[i - 1]; // New assignment
+            // Keep the picker as-is
+        }
+    }
+    
+    console.log('🔀 Scrambled box assignments:', boxes);
+    
+    // Publish scramble message to all clients
+    publishMessage({ 
+        type: 'scramble-boxes',
+        boxes: boxes
+    });
+    
+    // Save to Firebase with logging
+    saveBoxesToFirebase('scramble-boxes', currentUserName, {
+        totalBoxes: TOTAL_BOXES
+    });
+    
+    alert('✅ Box assignments have been scrambled! All users will see the new assignments.');
 }
 
 // Show participants list in a modal
