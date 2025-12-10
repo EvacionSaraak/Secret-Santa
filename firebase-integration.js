@@ -12,6 +12,15 @@ const FIREBASE_CONFIG = {
     appId: "YOUR_APP_ID"
 };
 
+// Validate Firebase configuration to prevent deployment with placeholders
+const isFirebaseConfigured = !FIREBASE_CONFIG.apiKey.includes('YOUR_') && 
+                              !FIREBASE_CONFIG.projectId.includes('YOUR_');
+
+if (!isFirebaseConfigured) {
+    console.warn('⚠️ Firebase not configured! Update FIREBASE_CONFIG in firebase-integration.js');
+    console.warn('📖 See FIREBASE_SETUP.md for detailed setup instructions');
+}
+
 // Firebase state
 let database = null;
 let firebaseInitialized = false;
@@ -20,6 +29,12 @@ let firebaseInitialized = false;
  * Initialize Firebase with the provided configuration
  */
 function initializeFirebase() {
+    // Skip initialization if config has placeholders
+    if (!isFirebaseConfigured) {
+        console.log('ℹ️ Firebase not configured - running in local mode');
+        return;
+    }
+    
     try {
         if (typeof firebase !== 'undefined' && !firebaseInitialized) {
             firebase.initializeApp(FIREBASE_CONFIG);
@@ -94,6 +109,12 @@ async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
  * @param {string} actionType - Type of action (e.g., 'select-box', 'unselect-box', 'clear-users')
  * @param {string} userName - User who performed the action
  * @param {Object} details - Additional details about the action
+ * 
+ * Note: In production, consider adding:
+ * - Rate limiting to prevent log spam
+ * - Log size limits or automatic cleanup
+ * - Validation of action types
+ * - Timestamp-based indexing for queries
  */
 async function logStateChangeToFirebase(actionType, userName, details = {}) {
     if (!firebaseInitialized || !database) {
@@ -109,6 +130,7 @@ async function logStateChangeToFirebase(actionType, userName, details = {}) {
         };
         
         // Push log entry to Firebase (creates unique key)
+        // TODO: Add rate limiting and log rotation for production
         await database.ref('secretSanta/logs').push(logEntry);
         
         console.log(`📝 Logged action: ${actionType} by ${userName}`);
