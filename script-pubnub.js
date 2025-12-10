@@ -1092,7 +1092,7 @@ function requestCurrentState() {
     
     // If no response after 2 seconds, use initialized state
     setTimeout(() => {
-        if (Object.keys(boxes).filter(k => boxes[k].picker).length === 0) {
+        if (Object.keys(boxes).filter(k => boxes[k] && boxes[k].picker).length === 0) {
             console.log('Using initialized assignments');
             updateBoxDisplay();
         }
