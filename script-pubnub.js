@@ -952,13 +952,11 @@ function handleMessage(message) {
             }
             updateBoxDisplay();
             
-            // Save to Firebase with logging
-            if (isAdmin) {
-                saveBoxesToFirebase('select-box', message.userName, {
-                    boxNumber: message.boxNumber,
-                    assigned: boxes[message.boxNumber]?.assigned
-                });
-            }
+            // Save to Firebase with logging (save from all users, not just admin)
+            saveBoxesToFirebase('select-box', message.userName, {
+                boxNumber: message.boxNumber,
+                assigned: boxes[message.boxNumber]?.assigned
+            });
             break;
         
         case 'unselect-box':
@@ -966,12 +964,10 @@ function handleMessage(message) {
                 boxes[message.boxNumber].picker = '';
                 updateBoxDisplay();
                 
-                // Save to Firebase with logging
-                if (isAdmin) {
-                    saveBoxesToFirebase('unselect-box', message.userName, {
-                        boxNumber: message.boxNumber
-                    });
-                }
+                // Save to Firebase with logging (save from all users, not just admin)
+                saveBoxesToFirebase('unselect-box', message.userName, {
+                    boxNumber: message.boxNumber
+                });
             }
             break;
         
@@ -982,12 +978,10 @@ function handleMessage(message) {
                 updateBoxDisplay();
                 
                 // Save to Firebase with logging
-                if (isAdmin) {
-                    saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
-                        boxNumber: message.boxNumber,
-                        removedUser: message.userName
-                    });
-                }
+                saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
+                    boxNumber: message.boxNumber,
+                    removedUser: message.userName
+                });
             }
             break;
         
@@ -999,11 +993,9 @@ function handleMessage(message) {
             updateBoxDisplay();
             
             // Save to Firebase with logging
-            if (isAdmin) {
-                saveBoxesToFirebase('clear-users', currentUserName, {
-                    totalCleared: Object.keys(boxes).length
-                });
-            }
+            saveBoxesToFirebase('clear-users', currentUserName, {
+                totalCleared: Object.keys(boxes).length
+            });
             break;
         
         case 'upload-boxes':
@@ -1011,11 +1003,9 @@ function handleMessage(message) {
             updateBoxDisplay();
             
             // Save to Firebase with logging
-            if (isAdmin) {
-                saveBoxesToFirebase('upload-boxes', currentUserName, {
-                    totalBoxes: Object.keys(boxes).length
-                });
-            }
+            saveBoxesToFirebase('upload-boxes', currentUserName, {
+                totalBoxes: Object.keys(boxes).length
+            });
             break;
         
         case 'name-change':
