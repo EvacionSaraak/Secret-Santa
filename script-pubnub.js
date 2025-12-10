@@ -693,7 +693,7 @@ async function handleChangeNameSubmit() {
     
     // Update all boxes that had the old picker name
     for (let boxNumber in boxes) {
-        if (boxes[boxNumber].picker === oldName) {
+        if (boxes[boxNumber] && boxes[boxNumber].picker === oldName) {
             boxes[boxNumber].picker = currentUserName;
         }
     }
@@ -797,7 +797,7 @@ function handleBoxClick(boxNumber) {
         // Check if non-admin user already has a box selected
         if (!isAdmin) {
             for (let boxNum in boxes) {
-                if (boxes[boxNum].picker === currentUserName) {
+                if (boxes[boxNum] && boxes[boxNum].picker === currentUserName) {
                     alert('You have already selected a box. You cannot change your selection.');
                     return;
                 }
@@ -985,7 +985,7 @@ function handleMessage(message) {
             (async () => {
                 // Remove any previous selection by this user
                 for (let boxNum in boxes) {
-                    if (boxes[boxNum].picker === message.userName) {
+                    if (boxes[boxNum] && boxes[boxNum].picker === message.userName) {
                         boxes[boxNum].picker = '';
                     }
                 }
@@ -1044,7 +1044,9 @@ function handleMessage(message) {
         case 'clear-users':
             // Clear all users - removes all pickers but keeps assignments
             for (let boxNum in boxes) {
-                boxes[boxNum].picker = '';
+                if (boxes[boxNum]) {
+                    boxes[boxNum].picker = '';
+                }
             }
             updateBoxDisplay();
             
@@ -1225,7 +1227,7 @@ function showParticipants() {
             let giftingTo = '-';
             
             for (let boxNum in boxes) {
-                if (boxes[boxNum].picker === participant) {
+                if (boxes[boxNum] && boxes[boxNum].picker === participant) {
                     pickedBox = boxNum;
                     giftingTo = boxes[boxNum].assigned || '-';
                     break;
