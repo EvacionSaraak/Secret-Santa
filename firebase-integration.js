@@ -24,7 +24,9 @@ if (!isFirebaseConfigured) {
 
 // Firebase state
 let database = null;
+let auth = null;
 let firebaseInitialized = false;
+let currentFirebaseUser = null;
 
 /**
  * Initialize Firebase with the provided configuration
@@ -40,12 +42,52 @@ function initializeFirebase() {
         if (typeof firebase !== 'undefined' && !firebaseInitialized) {
             firebase.initializeApp(FIREBASE_CONFIG);
             database = firebase.database();
+            auth = firebase.auth();
             firebaseInitialized = true;
             console.log('✅ Firebase initialized successfully');
         }
     } catch (error) {
         console.error('❌ Firebase initialization error:', error);
         console.warn('⚠️ Falling back to local storage mode');
+    }
+}
+
+/**
+ * Sign in anonymously to Firebase Authentication
+ * This is required for Firebase security rules
+ * @returns {Promise<Object|null>} User object or null if failed
+ */
+async function signInAnonymously() {
+    if (!firebaseInitialized || !auth) {
+        console.log('ℹ️ Firebase not available, skipping anonymous sign-in');
+        return null;
+    }
+    
+    try {
+        const userCredential = await auth.signInAnonymously();
+        currentFirebaseUser = userCredential.user;
+        console.log('✅ Signed in anonymously to Firebase:', currentFirebaseUser.uid);
+        return currentFirebaseUser;
+    } catch (error) {
+        console.error('❌ Error signing in anonymously:', error);
+        return null;
+    }
+}
+
+/**
+ * Sign out from Firebase Authentication
+ */
+async function signOutAnonymously() {
+    if (!firebaseInitialized || !auth) {
+        return;
+    }
+    
+    try {
+        await auth.signOut();
+        currentFirebaseUser = null;
+        console.log('✅ Signed out from Firebase');
+    } catch (error) {
+        console.error('❌ Error signing out:', error);
     }
 }
 
@@ -81,11 +123,12 @@ async function loadStateFromFirebase() {
  * @param {Object} boxesData - The boxes object to save
  * @param {Array} participantsList - List of participants
  * @param {number} totalBoxes - Total number of boxes
+ * @returns {Promise<boolean>} True if save was successful, false otherwise
  */
 async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
     if (!firebaseInitialized || !database) {
         console.log('ℹ️ Firebase not available, skipping save');
-        return;
+        return false;
     }
     
     try {
@@ -100,8 +143,10 @@ async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
         });
         
         console.log('✅ State saved to Firebase successfully');
+        return true;
     } catch (error) {
         console.error('❌ Error saving to Firebase:', error);
+        return false;
     }
 }
 

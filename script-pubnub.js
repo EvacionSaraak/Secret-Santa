@@ -167,8 +167,9 @@ async function loadBoxesFromFirebase() {
 
 // Wrapper function to save state to Firebase with logging
 async function saveBoxesToFirebase(actionType = 'state-update', userName = 'system', details = {}) {
-    await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
+    const saveSuccess = await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
     await logStateChangeToFirebase(actionType, userName, details);
+    return saveSuccess;
 }
 
 // Initialize random assignments for each box
@@ -456,7 +457,7 @@ function handleAdminLogin() {
     const submitBtn = document.getElementById('adminPasswordSubmit');
     const cancelBtn = document.getElementById('adminPasswordCancel');
     
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const password = passwordInput.value;
         if (!password) {
             alert('Please enter a password');
@@ -467,6 +468,10 @@ function handleAdminLogin() {
             currentUserName = ADMIN_NAME;
             isAdmin = true;
             localStorage.setItem('secretSantaUserName', ADMIN_NAME);
+            
+            // Sign in anonymously to Firebase
+            await signInAnonymously();
+            
             document.body.removeChild(passwordModal);
             showMainContent();
         } else {
@@ -493,7 +498,7 @@ function handleAdminLogin() {
     passwordInput.focus();
 }
 
-function handleNameSubmit() {
+async function handleNameSubmit() {
     const name = userNameInput.value.trim();
     console.log(`📝 Name submit clicked - input value: "${name}"`);
     
@@ -522,6 +527,10 @@ function handleNameSubmit() {
     isAdmin = false; // Regular users cannot become admin via normal login
     localStorage.setItem('secretSantaUserName', currentUserName);
     console.log(`💾 Saved to localStorage: "${currentUserName}"`);
+    
+    // Sign in anonymously to Firebase
+    await signInAnonymously();
+    
     console.log(`🚀 Showing main content...`);
     showMainContent();
 }
@@ -600,7 +609,7 @@ function updateAdminControls() {
     }
 }
 
-function handleAdminLogout() {
+async function handleAdminLogout() {
     if (!isAdmin) return;
     
     if (confirm('Are you sure you want to logout as admin?')) {
@@ -612,6 +621,9 @@ function handleAdminLogout() {
         
         // Remove from localStorage
         localStorage.removeItem('secretSantaUserName');
+        
+        // Sign out from Firebase
+        await signOutAnonymously();
         
         // Disconnect from PubNub and Firebase using modular functions
         disconnectPubNub();
@@ -642,7 +654,7 @@ function handleChangeName() {
     changeNameInput.focus();
 }
 
-function handleChangeNameSubmit() {
+async function handleChangeNameSubmit() {
     const newName = changeNameInput.value.trim();
     
     if (!newName) {
@@ -668,6 +680,10 @@ function handleChangeNameSubmit() {
     
     // Update localStorage
     localStorage.setItem('secretSantaUserName', currentUserName);
+    
+    // Sign out and sign in again with new identity
+    await signOutAnonymously();
+    await signInAnonymously();
     
     // Update display
     currentUserNameSpan.textContent = currentUserName;
@@ -788,7 +804,8 @@ function handleBoxClick(boxNumber) {
             }
         }
         
-        // Box is available - select it and show assignment
+        // Box is available - show loading state and select it
+        showBoxLoadingState(boxNumber);
         publishMessage({
             type: 'select-box',
             boxNumber,
@@ -825,6 +842,30 @@ function handleAdminRemove(boxNumber) {
             userName: box.picker,
             adminName: currentUserName
         });
+    }
+}
+
+function showBoxLoadingState(boxNumber) {
+    const boxElement = document.querySelector(`[data-box-number="${boxNumber}"]`);
+    if (!boxElement) return;
+    
+    const contentDiv = boxElement.querySelector('.box-content');
+    boxElement.classList.remove('available', 'selected', 'taken');
+    boxElement.classList.add('loading');
+    contentDiv.innerHTML = `
+        <div class="box-loading">
+            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div>Claiming box...</div>
+        </div>
+    `;
+}
+
+function hideBoxLoadingState(boxNumber) {
+    const boxElement = document.querySelector(`[data-box-number="${boxNumber}"]`);
+    if (boxElement) {
+        boxElement.classList.remove('loading');
     }
 }
 
@@ -940,19 +981,34 @@ function handleMessage(message) {
             break;
         
         case 'select-box':
-            // Remove any previous selection by this user
-            for (let boxNum in boxes) {
-                if (boxes[boxNum].picker === message.userName) {
-                    boxes[boxNum].picker = '';
+            // Handle the selection - but wait for Firebase confirmation before updating UI
+            (async () => {
+                // Remove any previous selection by this user
+                for (let boxNum in boxes) {
+                    if (boxes[boxNum].picker === message.userName) {
+                        boxes[boxNum].picker = '';
+                    }
                 }
-            }
-            // Add new selection
-            if (boxes[message.boxNumber]) {
-                boxes[message.boxNumber].picker = message.userName;
-            }
-            updateBoxDisplay();
-            
-            // Save to Firebase with logging (save from all users, not just admin)
+                // Add new selection
+                if (boxes[message.boxNumber]) {
+                    boxes[message.boxNumber].picker = message.userName;
+                }
+                
+                // Save to Firebase with logging (save from all users, not just admin)
+                const saveSuccess = await saveBoxesToFirebase('select-box', message.userName, {
+                    boxNumber: message.boxNumber,
+                    assigned: boxes[message.boxNumber]?.assigned
+                });
+                
+                // Only update UI after Firebase confirms save (or if Firebase not available)
+                hideBoxLoadingState(message.boxNumber);
+                updateBoxDisplay();
+                
+                if (!saveSuccess) {
+                    console.warn('⚠️ Firebase save failed, but showing selection anyway (PubNub sync)');
+                }
+            })();
+            break;
             saveBoxesToFirebase('select-box', message.userName, {
                 boxNumber: message.boxNumber,
                 assigned: boxes[message.boxNumber]?.assigned
