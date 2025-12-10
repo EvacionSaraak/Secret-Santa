@@ -42,29 +42,44 @@ const syncStatus = document.querySelector('.sync-status');
 
 // Initialize
 async function init() {
+    console.log('🎅 === SECRET SANTA APPLICATION STARTING ===');
+    
     // Initialize Firebase
+    console.log('🔥 Initializing Firebase...');
     initializeFirebase();
     
     // Load participants from file
+    console.log('📂 Loading participants from file...');
     await loadParticipants();
+    console.log(`✅ Loaded ${participants.length} participants`);
     
     // Load saved state from Firebase (if available)
+    console.log('💾 Loading saved state from Firebase...');
     await loadBoxesFromFirebase();
     
     // Check if user already has a name stored
     const storedName = localStorage.getItem('secretSantaUserName');
+    console.log(`🔍 Checking localStorage for saved name: ${storedName || 'none'}`);
+    
     if (storedName) {
         currentUserName = storedName;
         isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
+        console.log(`👤 User found in storage: ${storedName} (Admin: ${isAdmin})`);
         showMainContent();
         connectToPubNub();
+    } else {
+        console.log('👤 No saved user - showing name modal');
     }
     
     // Setup event listeners
+    console.log('🎧 Setting up event listeners...');
     setupEventListeners();
     
     // Generate boxes
+    console.log('📦 Generating boxes...');
     generateBoxes();
+    
+    console.log('🎅 === INITIALIZATION COMPLETE ===');
 }
 
 // Helper function to convert name to Camel Case
@@ -209,6 +224,9 @@ function setupEventListeners() {
 
 // Setup autocomplete functionality for any input element
 function setupAutocompleteForInput(input) {
+    console.log(`🔧 Setting up autocomplete for input: ${input.id}`);
+    console.log(`📊 Participants loaded: ${participants.length} names`);
+    
     let currentFocus = -1;
     
     // Create autocomplete container
@@ -216,12 +234,14 @@ function setupAutocompleteForInput(input) {
     autocompleteDiv.className = 'autocomplete-items';
     autocompleteDiv.id = `autocomplete-list-${input.id}`;
     input.parentNode.appendChild(autocompleteDiv);
+    console.log(`✅ Created autocomplete dropdown container: autocomplete-list-${input.id}`);
     
     // Create preview element for translucent auto-fill
     const previewDiv = document.createElement('div');
     previewDiv.className = 'autocomplete-preview';
     previewDiv.id = `autocomplete-preview-${input.id}`;
     input.parentNode.insertBefore(previewDiv, input);
+    console.log(`✅ Created preview element: autocomplete-preview-${input.id}`);
     
     // Function to update preview text
     function updatePreview(inputValue) {
@@ -236,21 +256,30 @@ function setupAutocompleteForInput(input) {
             name.toLowerCase().startsWith(inputValue.toLowerCase())
         );
         
+        console.log(`🔍 Preview search for "${inputValue}": found ${matches.length} matches`);
+        
         if (matches.length > 0) {
             const bestMatch = matches[0];
             // Show the remaining part of the match
             const previewText = bestMatch.substring(inputValue.length);
             previewDiv.textContent = inputValue + previewText;
+            console.log(`💡 Preview showing: "${bestMatch}"`);
         } else {
             previewDiv.textContent = '';
+            console.log(`⚠️ No preview matches found`);
         }
     }
     
     input.addEventListener('input', function() {
         const val = this.value.trim();
+        console.log(`⌨️ Input event - value: "${val}"`);
+        
         closeList(input);
         updatePreview(val);
-        if (!val) return;
+        if (!val) {
+            console.log(`⚠️ Empty input - skipping dropdown`);
+            return;
+        }
         
         currentFocus = -1;
         
@@ -260,8 +289,14 @@ function setupAutocompleteForInput(input) {
             name.toLowerCase().includes(val.toLowerCase())
         );
         
+        console.log(`🔍 Dropdown search for "${val}": found ${matches.length} matches`);
+        console.log(`📋 Matches:`, matches.slice(0, 5));
+        
         // Show top 5 matches
-        matches.slice(0, 5).forEach(match => {
+        const displayMatches = matches.slice(0, 5);
+        console.log(`📦 Creating ${displayMatches.length} dropdown items`);
+        
+        displayMatches.forEach((match, index) => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
             
@@ -271,7 +306,10 @@ function setupAutocompleteForInput(input) {
                            `<strong>${match.substring(startIndex, startIndex + val.length)}</strong>` +
                            match.substring(startIndex + val.length);
             
+            console.log(`  ✨ Created dropdown item ${index + 1}: "${match}"`);
+            
             div.addEventListener('click', function() {
+                console.log(`👆 Clicked on: "${match}"`);
                 input.value = match;
                 closeList(input);
                 updatePreview('');
@@ -279,6 +317,11 @@ function setupAutocompleteForInput(input) {
             
             autocompleteDiv.appendChild(div);
         });
+        
+        console.log(`✅ Dropdown populated with ${autocompleteDiv.children.length} items`);
+        console.log(`📍 Dropdown element ID: ${autocompleteDiv.id}`);
+        console.log(`📍 Dropdown parent:`, autocompleteDiv.parentNode);
+        console.log(`📍 Dropdown visible:`, !autocompleteDiv.classList.contains('hidden'));
     });
     
     input.addEventListener('keydown', function(e) {
@@ -319,6 +362,7 @@ function setupAutocompleteForInput(input) {
         if (currentFocus >= items.length) currentFocus = 0;
         if (currentFocus < 0) currentFocus = items.length - 1;
         items[currentFocus].classList.add('autocomplete-active');
+        console.log(`🎯 Active item set to index: ${currentFocus}`);
     }
     
     function removeActive(items) {
@@ -331,6 +375,7 @@ function setupAutocompleteForInput(input) {
         const listId = `autocomplete-list-${inputElement.id}`;
         const list = document.getElementById(listId);
         if (list) {
+            console.log(`🗑️ Clearing dropdown list: ${listId} (had ${list.children.length} items)`);
             list.innerHTML = '';
         }
     }
@@ -338,6 +383,7 @@ function setupAutocompleteForInput(input) {
     // Close autocomplete when clicking outside
     document.addEventListener('click', function(e) {
         if (e.target !== input) {
+            console.log(`👆 Clicked outside input - closing dropdown`);
             closeList(input);
         }
     });
@@ -422,23 +468,34 @@ function handleAdminLogin() {
 
 function handleNameSubmit() {
     const name = userNameInput.value.trim();
+    console.log(`📝 Name submit clicked - input value: "${name}"`);
+    
     if (name === '') {
+        console.log('⚠️ Empty name - showing alert');
         alert('Please select your name from the list');
         return;
     }
     
     // Find closest match in participants list
     const camelCaseName = toCamelCase(name);
+    console.log(`🔄 Converted to camel case: "${camelCaseName}"`);
+    
     const exactMatch = participants.find(p => p.toLowerCase() === camelCaseName.toLowerCase());
+    console.log(`🔍 Searching for exact match in ${participants.length} participants...`);
     
     if (!exactMatch) {
+        console.log(`❌ No match found for: "${camelCaseName}"`);
+        console.log(`📋 Available participants:`, participants.slice(0, 10));
         alert('Name not found in participants list. Please select from the suggested names.');
         return;
     }
     
+    console.log(`✅ Match found: "${exactMatch}"`);
     currentUserName = exactMatch; // Use exact match from participants
     isAdmin = false; // Regular users cannot become admin via normal login
     localStorage.setItem('secretSantaUserName', currentUserName);
+    console.log(`💾 Saved to localStorage: "${currentUserName}"`);
+    console.log(`🚀 Showing main content...`);
     showMainContent();
 }
 
