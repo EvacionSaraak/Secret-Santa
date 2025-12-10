@@ -44,40 +44,67 @@ const syncStatus = document.querySelector('.sync-status');
 async function init() {
     console.log('🎅 === SECRET SANTA APPLICATION STARTING ===');
     
-    // Initialize Firebase
-    console.log('🔥 Initializing Firebase...');
-    initializeFirebase();
-    
-    // Load participants from file
-    console.log('📂 Loading participants from file...');
-    await loadParticipants();
-    console.log(`✅ Loaded ${participants.length} participants`);
-    
-    // Load saved state from Firebase (if available)
-    console.log('💾 Loading saved state from Firebase...');
-    await loadBoxesFromFirebase();
-    
-    // Check if user already has a name stored
-    const storedName = localStorage.getItem('secretSantaUserName');
-    console.log(`🔍 Checking localStorage for saved name: ${storedName || 'none'}`);
-    
-    if (storedName) {
-        currentUserName = storedName;
-        isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
-        console.log(`👤 User found in storage: ${storedName} (Admin: ${isAdmin})`);
-        showMainContent();
-        connectToPubNub();
-    } else {
-        console.log('👤 No saved user - showing name modal');
+    try {
+        // Initialize Firebase
+        console.log('🔥 Initializing Firebase...');
+        initializeFirebase();
+    } catch (error) {
+        console.error('❌ Firebase initialization failed:', error);
     }
     
-    // Setup event listeners
-    console.log('🎧 Setting up event listeners...');
-    setupEventListeners();
+    try {
+        // Load participants from file
+        console.log('📂 Loading participants from file...');
+        await loadParticipants();
+        console.log(`✅ Loaded ${participants.length} participants`);
+    } catch (error) {
+        console.error('❌ Failed to load participants:', error);
+        alert('Failed to load participants list. The app may not work correctly.');
+    }
     
-    // Generate boxes
-    console.log('📦 Generating boxes...');
-    generateBoxes();
+    try {
+        // Load saved state from Firebase (if available)
+        console.log('💾 Loading saved state from Firebase...');
+        await loadBoxesFromFirebase();
+    } catch (error) {
+        console.error('❌ Failed to load from Firebase:', error);
+    }
+    
+    try {
+        // Check if user already has a name stored
+        const storedName = localStorage.getItem('secretSantaUserName');
+        console.log(`🔍 Checking localStorage for saved name: ${storedName || 'none'}`);
+        
+        if (storedName) {
+            currentUserName = storedName;
+            isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
+            console.log(`👤 User found in storage: ${storedName} (Admin: ${isAdmin})`);
+            showMainContent();
+            connectToPubNub();
+        } else {
+            console.log('👤 No saved user - showing name modal');
+        }
+    } catch (error) {
+        console.error('❌ Failed to check stored user:', error);
+    }
+    
+    try {
+        // Setup event listeners
+        console.log('🎧 Setting up event listeners...');
+        setupEventListeners();
+        console.log('✅ Event listeners setup complete');
+    } catch (error) {
+        console.error('❌ CRITICAL: Failed to setup event listeners:', error);
+        alert('Failed to setup event listeners. Buttons may not work. Error: ' + error.message);
+    }
+    
+    try {
+        // Generate boxes
+        console.log('📦 Generating boxes...');
+        generateBoxes();
+    } catch (error) {
+        console.error('❌ Failed to generate boxes:', error);
+    }
     
     console.log('🎅 === INITIALIZATION COMPLETE ===');
 }
@@ -1200,4 +1227,21 @@ function hideLoadingOverlay() {
 }
 
 // Start the application
-init();
+(function() {
+    console.log('🚀 === SCRIPT LOADED - ATTEMPTING TO START APPLICATION ===');
+    
+    // Check if required functions exist
+    console.log('Checking dependencies:');
+    console.log('  - init function exists:', typeof init === 'function');
+    console.log('  - participants array exists:', typeof participants !== 'undefined');
+    console.log('  - firebase object exists:', typeof firebase !== 'undefined');
+    console.log('  - PubNub object exists:', typeof PubNub !== 'undefined');
+    
+    try {
+        init();
+    } catch (error) {
+        console.error('❌ CRITICAL ERROR during initialization:', error);
+        console.error('Stack trace:', error.stack);
+        alert('Application failed to start. Check console for details. Error: ' + error.message);
+    }
+})();
