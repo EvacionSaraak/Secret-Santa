@@ -1029,15 +1029,25 @@ function handleMessage(message) {
         
         case 'admin-remove-box':
             // Admin removing someone's box selection
-            if (boxes[message.boxNumber] && boxes[message.boxNumber].picker === message.userName) {
-                boxes[message.boxNumber].picker = '';
-                updateBoxDisplay();
-                
-                // Save to Firebase with logging
-                saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
-                    boxNumber: message.boxNumber,
-                    removedUser: message.userName
-                });
+            console.log(`🗑️ Admin remove request for box ${message.boxNumber}, user: ${message.userName}`);
+            console.log(`📦 Current box state:`, boxes[message.boxNumber]);
+            
+            if (boxes[message.boxNumber]) {
+                if (boxes[message.boxNumber].picker === message.userName) {
+                    console.log(`✅ Removing ${message.userName} from box ${message.boxNumber}`);
+                    boxes[message.boxNumber].picker = '';
+                    updateBoxDisplay();
+                    
+                    // Save to Firebase with logging
+                    saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
+                        boxNumber: message.boxNumber,
+                        removedUser: message.userName
+                    });
+                } else {
+                    console.log(`⚠️ Picker mismatch! Box has: "${boxes[message.boxNumber].picker}", message has: "${message.userName}"`);
+                }
+            } else {
+                console.log(`❌ Box ${message.boxNumber} does not exist in boxes object`);
             }
             break;
         
