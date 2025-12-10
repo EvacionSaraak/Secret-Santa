@@ -1,31 +1,16 @@
-// ⚠️ PubNub Configuration ⚠️
-// API keys configured for Secret Santa Box Picker
-// Get free API keys from: https://www.pubnub.com/
-
-const PLACEHOLDER_PUBLISH_KEY = 'YOUR_PUBLISH_KEY_HERE';
-const PLACEHOLDER_SUBSCRIBE_KEY = 'YOUR_SUBSCRIBE_KEY_HERE';
-
-const PUBNUB_CONFIG = {
-    publishKey: 'pub-c-a582deb0-1131-41f5-9701-904d7ff5f864',
-    subscribeKey: 'sub-c-e0c62c1e-5f36-4373-8765-b00f28f5ab1b',
-    userId: 'user_' + Math.random().toString(36).substring(7)
-};
-
-// Check if keys are configured
-if (PUBNUB_CONFIG.publishKey === PLACEHOLDER_PUBLISH_KEY || 
-    PUBNUB_CONFIG.subscribeKey === PLACEHOLDER_SUBSCRIBE_KEY) {
-    console.warn('⚠️ PubNub keys not configured! Please update script-pubnub.js with your keys.');
-    console.warn('Get free keys at: https://www.pubnub.com/');
-}
+// ===========================================================================
+// Secret Santa Box Picker - Main Application Script
+// ===========================================================================
+// This is the main application logic. Configuration is in separate files:
+// - firebase-integration.js: Firebase database integration
+// - pubnub-integration.js: PubNub real-time messaging
+// ===========================================================================
 
 // State management
 let currentUserName = '';
 let participants = []; // Array of participant names loaded from participants.txt
 let boxes = {}; // { boxNumber: { picker: userName, assigned: assignedName } }
 let TOTAL_BOXES = 0; // Will be set to participants.length
-let isConnected = false;
-let pubnub = null;
-const CHANNEL_NAME = 'secret-santa-boxes';
 
 // Admin configuration
 const ADMIN_NAME = 'ADMIN'; // Admin has special account and cannot be a participant
@@ -57,8 +42,14 @@ const syncStatus = document.querySelector('.sync-status');
 
 // Initialize
 async function init() {
+    // Initialize Firebase
+    initializeFirebase();
+    
     // Load participants from file
     await loadParticipants();
+    
+    // Load saved state from Firebase (if available)
+    await loadBoxesFromFirebase();
     
     // Check if user already has a name stored
     const storedName = localStorage.getItem('secretSantaUserName');
@@ -110,6 +101,34 @@ async function loadParticipants() {
     }
 }
 
+// Load state from Firebase
+// Wrapper function to load state from Firebase
+async function loadBoxesFromFirebase() {
+    const savedBoxes = await loadStateFromFirebase();
+    
+    if (savedBoxes && Object.keys(savedBoxes).length > 0) {
+        // Validate saved boxes match current participants count
+        if (Object.keys(savedBoxes).length === TOTAL_BOXES) {
+            boxes = savedBoxes;
+            console.log('✅ Using saved box assignments from Firebase');
+        } else {
+            console.log('⚠️ Saved boxes count mismatch, reinitializing');
+            initializeAssignments();
+            await saveBoxesToFirebase();
+        }
+    } else {
+        console.log('ℹ️ No saved state in Firebase, initializing new assignments');
+        initializeAssignments();
+        await saveBoxesToFirebase();
+    }
+}
+
+// Wrapper function to save state to Firebase with logging
+async function saveBoxesToFirebase(actionType = 'state-update', userName = 'system', details = {}) {
+    await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
+    await logStateChangeToFirebase(actionType, userName, details);
+}
+
 // Initialize random assignments for each box
 function initializeAssignments() {
     // Create a shuffled copy of participants for assignments
@@ -129,7 +148,7 @@ function initializeAssignments() {
         };
     }
     
-    console.log('Initialized box assignments:', boxes);
+    console.log('🎲 Initialized box assignments:', boxes);
 }
 
 function setupEventListeners() {
@@ -510,11 +529,10 @@ function handleAdminLogout() {
         // Remove from localStorage
         localStorage.removeItem('secretSantaUserName');
         
-        // Disconnect from PubNub if connected
-        if (pubnub) {
-            pubnub.unsubscribeAll();
-            isConnected = false;
-        }
+        // Disconnect from PubNub and Firebase using modular functions
+        disconnectPubNub();
+        disconnectFirebase();
+        isConnected = false;
         
         // Hide main content and show name modal
         mainContent.classList.add('hidden');
@@ -787,44 +805,38 @@ function updateBoxDisplay() {
 function connectToPubNub() {
     showLoadingOverlay('Connecting to server...');
     
-    try {
-        // Initialize PubNub
-        pubnub = new PubNub({
-            publishKey: PUBNUB_CONFIG.publishKey,
-            subscribeKey: PUBNUB_CONFIG.subscribeKey,
-            userId: PUBNUB_CONFIG.userId
-        });
-        
-        // Add listeners
-        pubnub.addListener({
-            status: function(statusEvent) {
-                if (statusEvent.category === "PNConnectedCategory") {
-                    console.log('Connected to PubNub');
-                    isConnected = true;
-                    updateSyncStatus(true);
-                    hideLoadingOverlay();
-                    updateBoxDisplay();
-                    
-                    // Request current state
-                    requestCurrentState();
-                }
-            },
-            message: function(messageEvent) {
-                handleMessage(messageEvent.message);
+    // Setup Firebase real-time listeners using the modular function
+    setupFirebaseListeners((updatedBoxes) => {
+        if (updatedBoxes && JSON.stringify(updatedBoxes) !== JSON.stringify(boxes)) {
+            console.log('🔄 Firebase update detected, syncing boxes');
+            boxes = updatedBoxes;
+            updateBoxDisplay();
+        }
+    });
+    
+    // Initialize PubNub using the modular function
+    initializePubNub(
+        // onStatusChange callback
+        (connected) => {
+            isConnected = connected;
+            updateSyncStatus(connected);
+            if (connected) {
+                hideLoadingOverlay();
+                updateBoxDisplay();
+                requestCurrentState();
+            } else {
+                showLoadingOverlay('Connection error. Please check your PubNub keys.');
             }
-        });
-        
-        // Subscribe to the channel
-        pubnub.subscribe({
-            channels: [CHANNEL_NAME]
-        });
-        
-    } catch (error) {
-        console.error('PubNub connection error:', error);
-        isConnected = false;
-        showLoadingOverlay('Connection error. Please check your PubNub keys.');
-    }
+        },
+        // onMessage callback
+        (message) => {
+            handleMessage(message);
+        }
+    );
 }
+
+// Remove duplicate setupFirebaseListeners function - now using modular version
+
 
 function handleMessage(message) {
     console.log('Received message:', message);
@@ -836,9 +848,9 @@ function handleMessage(message) {
                 boxes = message.boxes;
                 updateBoxDisplay();
                 
-                // Save to repository (admin only, automatic)
+                // Save to Firebase with logging
                 if (isAdmin) {
-                    saveToRepository();
+                    saveBoxesToFirebase('state-response', currentUserName, { source: 'pubnub' });
                 }
             }
             break;
@@ -856,9 +868,12 @@ function handleMessage(message) {
             }
             updateBoxDisplay();
             
-            // Save to repository
+            // Save to Firebase with logging
             if (isAdmin) {
-                saveToRepository();
+                saveBoxesToFirebase('select-box', message.userName, {
+                    boxNumber: message.boxNumber,
+                    assigned: boxes[message.boxNumber]?.assigned
+                });
             }
             break;
         
@@ -867,9 +882,11 @@ function handleMessage(message) {
                 boxes[message.boxNumber].picker = '';
                 updateBoxDisplay();
                 
-                // Save to repository
+                // Save to Firebase with logging
                 if (isAdmin) {
-                    saveToRepository();
+                    saveBoxesToFirebase('unselect-box', message.userName, {
+                        boxNumber: message.boxNumber
+                    });
                 }
             }
             break;
@@ -880,9 +897,12 @@ function handleMessage(message) {
                 boxes[message.boxNumber].picker = '';
                 updateBoxDisplay();
                 
-                // Save to repository
+                // Save to Firebase with logging
                 if (isAdmin) {
-                    saveToRepository();
+                    saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
+                        boxNumber: message.boxNumber,
+                        removedUser: message.userName
+                    });
                 }
             }
             break;
@@ -894,9 +914,11 @@ function handleMessage(message) {
             }
             updateBoxDisplay();
             
-            // Save to repository
+            // Save to Firebase with logging
             if (isAdmin) {
-                saveToRepository();
+                saveBoxesToFirebase('clear-users', currentUserName, {
+                    totalCleared: Object.keys(boxes).length
+                });
             }
             break;
         
@@ -904,9 +926,11 @@ function handleMessage(message) {
             boxes = message.boxes || {};
             updateBoxDisplay();
             
-            // Save to repository
+            // Save to Firebase with logging
             if (isAdmin) {
-                saveToRepository();
+                saveBoxesToFirebase('upload-boxes', currentUserName, {
+                    totalBoxes: Object.keys(boxes).length
+                });
             }
             break;
         
@@ -1096,22 +1120,11 @@ function showParticipants() {
 }
 
 // Save current state to repository (manual for GitHub Pages - shows instructions)
+// This function is kept for backward compatibility but is now deprecated
+// The actual Firebase saving is handled in firebase-integration.js
 function saveToRepository() {
-    if (!isAdmin) return;
-    
-    // Create the JSON data
-    const data = {
-        boxes: boxes,
-        participants: participants,
-        totalBoxes: TOTAL_BOXES,
-        lastUpdated: new Date().toISOString()
-    };
-    
-    console.log('Repository state to save:', data);
-    
-    // For GitHub Pages, we can't automatically commit
-    // Instead, we'll provide download instructions to admin
-    // In a real implementation with server-side code, this would auto-commit
+    // Legacy function - no longer used
+    console.log('ℹ️ Legacy saveToRepository called - using Firebase instead');
 }
 
 function showLoadingOverlay(message) {

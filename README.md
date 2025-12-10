@@ -98,9 +98,27 @@ The application features a beautiful purple gradient interface where you can see
    - Your Secret Santa is live at: `https://[your-username].github.io/[repository]/`
    - Share this link with all participants
 
-### ⏰ Data Retention
+### 🔥 Firebase Setup (Recommended for Permanent Storage)
 
-**Your selections are saved for 7 days** thanks to PubNub Message Persistence (free tier).
+**Firebase provides unlimited data retention and real-time sync!**
+
+Instead of PubNub's 7-day limit, Firebase stores your data permanently:
+- ✅ **Persistent Storage**: Assignments saved forever, not just 7 days
+- ✅ **Real-time Sync**: All users see updates instantly
+- ✅ **Free Tier**: Generous limits perfect for Secret Santa
+- ✅ **No Re-randomization**: Assignments persist across page refreshes
+
+**Quick Setup:**
+1. Create a free Firebase account at [firebase.google.com](https://firebase.google.com/)
+2. Create a new project and enable Realtime Database
+3. Copy your config values
+4. Update `FIREBASE_CONFIG` in `script-pubnub.js`
+
+📖 **Detailed guide**: See [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
+
+### ⏰ Data Retention (PubNub Mode)
+
+**If not using Firebase**, your selections are saved for 7 days with PubNub Message Persistence (free tier).
 
 **Important:** Since the free PubNub tier keeps data for 7 days:
 - Run your event within 7 days of the first selection
