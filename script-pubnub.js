@@ -501,10 +501,28 @@ function handleAdminLogout() {
     if (!isAdmin) return;
     
     if (confirm('Are you sure you want to logout as admin?')) {
+        // Clear admin status
         isAdmin = false;
-        updateAdminControls();
-        updateBoxDisplay();
-        alert('Logged out from admin mode.');
+        
+        // Clear current user name
+        currentUserName = '';
+        
+        // Remove from localStorage
+        localStorage.removeItem('secretSantaUserName');
+        
+        // Disconnect from PubNub if connected
+        if (pubnub) {
+            pubnub.unsubscribeAll();
+            isConnected = false;
+        }
+        
+        // Hide main content and show name modal
+        mainContent.classList.add('hidden');
+        nameModal.classList.remove('hidden');
+        
+        // Reset and focus on name input
+        userNameInput.value = '';
+        userNameInput.focus();
     }
 }
 
