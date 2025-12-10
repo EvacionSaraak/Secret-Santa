@@ -737,18 +737,16 @@ function generateBoxes() {
         box.appendChild(contentDiv);
         box.addEventListener('click', () => handleBoxClick(i));
         
-        // Add admin remove button for claimed boxes
-        if (isAdmin) {
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'box-remove-btn hidden';
-            removeBtn.innerHTML = '×';
-            removeBtn.title = 'Remove selection';
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent box click
-                handleAdminRemove(i);
-            });
-            box.appendChild(removeBtn);
-        }
+        // Add admin remove button for claimed boxes (always create it, show/hide based on admin status)
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'box-remove-btn hidden';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = 'Remove selection';
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent box click
+            handleAdminRemove(i);
+        });
+        box.appendChild(removeBtn);
         
         col.appendChild(box);
         boxGrid.appendChild(col);
