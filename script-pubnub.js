@@ -1174,8 +1174,27 @@ function downloadJSON() {
 }
 
 function handleUpload(event) {
+    if (!isAdmin) {
+        event.target.value = '';
+        return;
+    }
+    
     const file = event.target.files[0];
     if (!file) return;
+    
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to upload new box assignments:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Upload cancelled.');
+        event.target.value = '';
+        return;
+    }
+    
+    // Confirm action
+    if (!confirm('⚠️ WARNING: This will replace all current box assignments!\n\nAre you sure you want to continue?')) {
+        event.target.value = '';
+        return;
+    }
     
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -1194,15 +1213,15 @@ function handleUpload(event) {
                         type: 'upload-boxes',
                         boxes: data.boxes
                     });
-                    alert('Successfully loaded box assignments!');
+                    alert('✅ Successfully loaded box assignments!');
                 } else {
-                    alert('Invalid file format: missing picker or assigned fields');
+                    alert('❌ Invalid file format: missing picker or assigned fields');
                 }
             } else {
-                alert('Invalid file format: missing boxes data');
+                alert('❌ Invalid file format: missing boxes data');
             }
         } catch (error) {
-            alert('Error reading file: ' + error.message);
+            alert('❌ Error reading file: ' + error.message);
         }
     };
     reader.readAsText(file);
