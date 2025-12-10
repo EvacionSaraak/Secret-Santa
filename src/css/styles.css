@@ -235,6 +235,7 @@ body {
     right: 0;
     padding: 0.5rem 0.75rem;
     font-size: 1rem;
+    line-height: 1.5;
     color: #cbd5e0;
     pointer-events: none;
     z-index: 1;
@@ -242,6 +243,15 @@ body {
     overflow: hidden;
     border: 2px solid transparent;
     border-radius: 0.375rem;
+}
+
+/* Match Bootstrap's form-control-lg padding */
+.autocomplete-container .form-control-lg + .autocomplete-preview,
+.autocomplete-container:has(.form-control-lg) .autocomplete-preview {
+    padding: 0.5rem 1rem;
+    font-size: 1.25rem;
+    line-height: 1.5;
+    border-radius: 0.5rem;
 }
 
 .autocomplete-container .form-control {
