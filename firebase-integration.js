@@ -3,13 +3,14 @@
 // Get your config from: https://console.firebase.google.com/
 
 const FIREBASE_CONFIG = {
-    apiKey: "YOUR_FIREBASE_API_KEY",
-    authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-    databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT_ID.appspot.com",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyA3bhcPNRA3X7R9Ev5FREyiVnCyqbgic_A",
+    authDomain: "secret-santa-9ee11.firebaseapp.com",
+    databaseURL: "https://secret-santa-9ee11-default-rtdb.firebaseio.com",
+    projectId: "secret-santa-9ee11",
+    storageBucket: "secret-santa-9ee11.firebasestorage.app",
+    messagingSenderId: "335669780114",
+    appId: "1:335669780114:web:debf141b61aec8e1b4904b",
+    measurementId: "G-TDCV3KCZ2H"
 };
 
 // Validate Firebase configuration to prevent deployment with placeholders
