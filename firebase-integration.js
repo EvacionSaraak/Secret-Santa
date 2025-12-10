@@ -5,7 +5,7 @@
 const FIREBASE_CONFIG = {
     apiKey: "AIzaSyA3bhcPNRA3X7R9Ev5FREyiVnCyqbgic_A",
     authDomain: "secret-santa-9ee11.firebaseapp.com",
-    databaseURL: "https://secret-santa-9ee11-default-rtdb.firebaseio.com",
+    databaseURL: "https://secret-santa-9ee11-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "secret-santa-9ee11",
     storageBucket: "secret-santa-9ee11.firebasestorage.app",
     messagingSenderId: "335669780114",
