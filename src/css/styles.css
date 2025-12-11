@@ -400,7 +400,15 @@ body {
 
 /* Box Styles - Using Bootstrap Grid */
 .box {
-    min-height: 100px;
+    /* Flexible width based on content
+       Standard boxes: 80-100px min-width (compact for short names/numbers)
+       Wide boxes (.box-wide): 150-500px min-width (for long names >15 chars) */
+    flex: 0 0 auto;
+    min-width: 80px;
+    max-width: 100%;
+    
+    /* Constrained height to encourage horizontal growth */
+    min-height: 80px;
     height: auto;
     width: 100%;
     display: flex;
@@ -654,6 +662,33 @@ body {
 
 .box-remove-btn.hidden {
     display: none;
+}
+
+/* Wide box for long names - expand width instead of height */
+.box-wide {
+    min-width: 150px;
+    max-width: 350px;
+}
+
+@media (min-width: 576px) {
+    .box-wide {
+        min-width: 180px;
+        max-width: 400px;
+    }
+}
+
+@media (min-width: 768px) {
+    .box-wide {
+        min-width: 200px;
+        max-width: 450px;
+    }
+}
+
+@media (min-width: 992px) {
+    .box-wide {
+        min-width: 220px;
+        max-width: 500px;
+    }
 }
 
 /* Mobile Optimizations */

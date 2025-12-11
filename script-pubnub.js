@@ -17,6 +17,9 @@ const ADMIN_NAME = 'ADMIN'; // Admin has special account and cannot be a partici
 const ADMIN_PASSWORD = 'SecretSanta2025!'; // Admin password (keep secret!)
 let isAdmin = false;
 
+// Box display configuration
+const LONG_NAME_THRESHOLD = 15; // Names longer than this will trigger wider box display
+
 // DOM elements
 const nameModal = document.getElementById('nameModal');
 const changeNameModal = document.getElementById('changeNameModal');
@@ -720,10 +723,6 @@ function generateBoxes() {
     boxGrid.innerHTML = '';
     
     for (let i = 1; i <= TOTAL_BOXES; i++) {
-        // Create Bootstrap column
-        const col = document.createElement('div');
-        col.className = 'col-4 col-sm-3 col-md-2 col-lg-1';
-        
         const box = document.createElement('div');
         box.className = 'box';
         box.dataset.boxNumber = i;
@@ -750,8 +749,7 @@ function generateBoxes() {
         });
         box.appendChild(removeBtn);
         
-        col.appendChild(box);
-        boxGrid.appendChild(col);
+        boxGrid.appendChild(box);
     }
     
     updateBoxDisplay();
@@ -881,7 +879,7 @@ function updateBoxDisplay() {
         if (!box) continue;
         
         // Reset classes
-        boxElement.classList.remove('available', 'selected', 'taken', 'disabled');
+        boxElement.classList.remove('available', 'selected', 'taken', 'disabled', 'box-wide');
         
         if (box.picker === currentUserName) {
             // User's own box - show who they're assigned to gift
@@ -890,6 +888,10 @@ function updateBoxDisplay() {
                 <div class="box-picker">You picked this!</div>
                 <div class="box-assigned">🎁 Gift to: <strong>${box.assigned}</strong></div>
             `;
+            // Make box wider if name is long
+            if (box.assigned && box.assigned.length > LONG_NAME_THRESHOLD) {
+                boxElement.classList.add('box-wide');
+            }
             if (removeBtn) removeBtn.classList.add('hidden');
         } else if (box.picker) {
             // Box claimed by someone else
@@ -901,6 +903,10 @@ function updateBoxDisplay() {
                     <div class="box-picker">Picker: ${box.picker}</div>
                     <div class="box-assigned">Assigned: ${box.assigned}</div>
                 `;
+                // Make box wider if names are long
+                if ((box.picker && box.picker.length > LONG_NAME_THRESHOLD) || (box.assigned && box.assigned.length > LONG_NAME_THRESHOLD)) {
+                    boxElement.classList.add('box-wide');
+                }
                 if (removeBtn) removeBtn.classList.remove('hidden');
             } else {
                 // Regular users just see "Claimed"
@@ -914,6 +920,10 @@ function updateBoxDisplay() {
             if (isAdmin) {
                 // Admin sees who will be assigned
                 contentDiv.innerHTML = `<div class="box-available">Available<br><small>Assigned: ${box.assigned}</small></div>`;
+                // Make box wider if name is long
+                if (box.assigned && box.assigned.length > LONG_NAME_THRESHOLD) {
+                    boxElement.classList.add('box-wide');
+                }
             } else {
                 contentDiv.innerHTML = `<div class="box-available">Available</div>`;
             }
