@@ -1202,9 +1202,9 @@ function handleUpload(event) {
             const data = JSON.parse(e.target.result);
             
             if (data.boxes && typeof data.boxes === 'object') {
-                // Validate the data
+                // Validate the data - check each box entry is either null or has required fields
                 const isValid = Object.values(data.boxes).every(box => 
-                    box.hasOwnProperty('picker') && box.hasOwnProperty('assigned')
+                    box === null || (box && box.hasOwnProperty('picker') && box.hasOwnProperty('assigned'))
                 );
                 
                 if (isValid) {
