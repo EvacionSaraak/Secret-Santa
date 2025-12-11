@@ -537,11 +537,6 @@ function generateBoxes() {
     boxGrid.innerHTML = '';
     
     for (let i = 1; i <= TOTAL_BOXES; i++) {
-        // Create Bootstrap column
-        const col = document.createElement('div');
-        col.className = 'col-4 col-sm-3 col-md-2 col-lg-1';
-        col.dataset.boxColumn = i; // Add identifier for column
-        
         const box = document.createElement('div');
         box.className = 'box';
         box.dataset.boxNumber = i;
@@ -570,8 +565,7 @@ function generateBoxes() {
             box.appendChild(removeBtn);
         }
         
-        col.appendChild(box);
-        boxGrid.appendChild(col);
+        boxGrid.appendChild(box);
     }
     
     updateBoxDisplay();
@@ -659,7 +653,6 @@ function updateBoxDisplay() {
         const boxElement = document.querySelector(`[data-box-number="${i}"]`);
         if (!boxElement) continue;
         
-        const colElement = document.querySelector(`[data-box-column="${i}"]`);
         const contentDiv = boxElement.querySelector('.box-content');
         const removeBtn = boxElement.querySelector('.box-remove-btn');
         const box = boxes[i];
@@ -667,8 +660,7 @@ function updateBoxDisplay() {
         if (!box) continue;
         
         // Reset classes
-        boxElement.classList.remove('available', 'selected', 'taken', 'disabled');
-        if (colElement) colElement.classList.remove('col-wide');
+        boxElement.classList.remove('available', 'selected', 'taken', 'disabled', 'box-wide');
         
         if (box.picker === currentUserName) {
             // User's own box - show who they're assigned to gift
@@ -678,8 +670,8 @@ function updateBoxDisplay() {
                 <div class="box-assigned">🎁 Gift to: <strong>${box.assigned}</strong></div>
             `;
             // Make box wider if name is long
-            if (box.assigned && box.assigned.length > 12 && colElement) {
-                colElement.classList.add('col-wide');
+            if (box.assigned && box.assigned.length > 15) {
+                boxElement.classList.add('box-wide');
             }
             if (removeBtn) removeBtn.classList.add('hidden');
         } else if (box.picker) {
@@ -693,8 +685,8 @@ function updateBoxDisplay() {
                     <div class="box-assigned">Assigned: ${box.assigned}</div>
                 `;
                 // Make box wider if names are long
-                if ((box.picker && box.picker.length > 12) || (box.assigned && box.assigned.length > 12)) {
-                    if (colElement) colElement.classList.add('col-wide');
+                if ((box.picker && box.picker.length > 15) || (box.assigned && box.assigned.length > 15)) {
+                    boxElement.classList.add('box-wide');
                 }
                 if (removeBtn) removeBtn.classList.remove('hidden');
             } else {
@@ -710,8 +702,8 @@ function updateBoxDisplay() {
                 // Admin sees who will be assigned
                 contentDiv.innerHTML = `<div class="box-available">Available<br><small>Assigned: ${box.assigned}</small></div>`;
                 // Make box wider if name is long
-                if (box.assigned && box.assigned.length > 12 && colElement) {
-                    colElement.classList.add('col-wide');
+                if (box.assigned && box.assigned.length > 15) {
+                    boxElement.classList.add('box-wide');
                 }
             } else {
                 contentDiv.innerHTML = `<div class="box-available">Available</div>`;
