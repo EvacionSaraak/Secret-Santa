@@ -32,6 +32,9 @@ const ADMIN_NAME = 'ADMIN'; // Admin has special account and cannot be a partici
 const ADMIN_PASSWORD = 'SecretSanta2025!'; // Admin password (keep secret!)
 let isAdmin = false;
 
+// Box display configuration
+const LONG_NAME_THRESHOLD = 15; // Names longer than this will trigger wider box display
+
 // DOM elements
 const nameModal = document.getElementById('nameModal');
 const changeNameModal = document.getElementById('changeNameModal');
@@ -670,7 +673,7 @@ function updateBoxDisplay() {
                 <div class="box-assigned">🎁 Gift to: <strong>${box.assigned}</strong></div>
             `;
             // Make box wider if name is long
-            if (box.assigned && box.assigned.length > 15) {
+            if (box.assigned && box.assigned.length > LONG_NAME_THRESHOLD) {
                 boxElement.classList.add('box-wide');
             }
             if (removeBtn) removeBtn.classList.add('hidden');
@@ -685,7 +688,7 @@ function updateBoxDisplay() {
                     <div class="box-assigned">Assigned: ${box.assigned}</div>
                 `;
                 // Make box wider if names are long
-                if ((box.picker && box.picker.length > 15) || (box.assigned && box.assigned.length > 15)) {
+                if ((box.picker && box.picker.length > LONG_NAME_THRESHOLD) || (box.assigned && box.assigned.length > LONG_NAME_THRESHOLD)) {
                     boxElement.classList.add('box-wide');
                 }
                 if (removeBtn) removeBtn.classList.remove('hidden');
@@ -702,7 +705,7 @@ function updateBoxDisplay() {
                 // Admin sees who will be assigned
                 contentDiv.innerHTML = `<div class="box-available">Available<br><small>Assigned: ${box.assigned}</small></div>`;
                 // Make box wider if name is long
-                if (box.assigned && box.assigned.length > 15) {
+                if (box.assigned && box.assigned.length > LONG_NAME_THRESHOLD) {
                     boxElement.classList.add('box-wide');
                 }
             } else {

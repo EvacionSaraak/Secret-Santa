@@ -335,7 +335,9 @@ body {
 
 /* Box Styles - Using Flexbox */
 .box {
-    /* Flexible width based on content */
+    /* Flexible width based on content
+       Standard boxes: 80-100px min-width (compact for short names/numbers)
+       Wide boxes (.box-wide): 150-500px min-width (for long names >15 chars) */
     flex: 0 0 auto;
     min-width: 80px;
     max-width: 100%;
