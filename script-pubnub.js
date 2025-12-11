@@ -1,31 +1,16 @@
-// ⚠️ PubNub Configuration ⚠️
-// API keys configured for Secret Santa Box Picker
-// Get free API keys from: https://www.pubnub.com/
-
-const PLACEHOLDER_PUBLISH_KEY = 'YOUR_PUBLISH_KEY_HERE';
-const PLACEHOLDER_SUBSCRIBE_KEY = 'YOUR_SUBSCRIBE_KEY_HERE';
-
-const PUBNUB_CONFIG = {
-    publishKey: 'pub-c-a582deb0-1131-41f5-9701-904d7ff5f864',
-    subscribeKey: 'sub-c-e0c62c1e-5f36-4373-8765-b00f28f5ab1b',
-    userId: 'user_' + Math.random().toString(36).substring(7)
-};
-
-// Check if keys are configured
-if (PUBNUB_CONFIG.publishKey === PLACEHOLDER_PUBLISH_KEY || 
-    PUBNUB_CONFIG.subscribeKey === PLACEHOLDER_SUBSCRIBE_KEY) {
-    console.warn('⚠️ PubNub keys not configured! Please update script-pubnub.js with your keys.');
-    console.warn('Get free keys at: https://www.pubnub.com/');
-}
+// ===========================================================================
+// Secret Santa Box Picker - Main Application Script
+// ===========================================================================
+// This is the main application logic. Configuration is in separate files:
+// - firebase-integration.js: Firebase database integration
+// - pubnub-integration.js: PubNub real-time messaging
+// ===========================================================================
 
 // State management
 let currentUserName = '';
 let participants = []; // Array of participant names loaded from participants.txt
 let boxes = {}; // { boxNumber: { picker: userName, assigned: assignedName } }
 let TOTAL_BOXES = 0; // Will be set to participants.length
-let isConnected = false;
-let pubnub = null;
-const CHANNEL_NAME = 'secret-santa-boxes';
 
 // Admin configuration
 const ADMIN_NAME = 'ADMIN'; // Admin has special account and cannot be a participant
@@ -47,6 +32,7 @@ const downloadBtn = document.getElementById('downloadBtn');
 const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const clearUsersBtn = document.getElementById('clearUsersBtn');
+const scrambleBtn = document.getElementById('scrambleBtn');
 const showParticipantsBtn = document.getElementById('showParticipantsBtn');
 const participantsModal = document.getElementById('participantsModal');
 const closeParticipantsBtn = document.getElementById('closeParticipantsBtn');
@@ -57,23 +43,71 @@ const syncStatus = document.querySelector('.sync-status');
 
 // Initialize
 async function init() {
-    // Load participants from file
-    await loadParticipants();
+    console.log('🎅 === SECRET SANTA APPLICATION STARTING ===');
     
-    // Check if user already has a name stored
-    const storedName = localStorage.getItem('secretSantaUserName');
-    if (storedName) {
-        currentUserName = storedName;
-        isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
-        showMainContent();
-        connectToPubNub();
+    try {
+        // Initialize Firebase
+        console.log('🔥 Initializing Firebase...');
+        initializeFirebase();
+    } catch (error) {
+        console.error('❌ Firebase initialization failed:', error);
     }
     
-    // Setup event listeners
-    setupEventListeners();
+    try {
+        // Load participants from file
+        console.log('📂 Loading participants from file...');
+        await loadParticipants();
+        console.log(`✅ Loaded ${participants.length} participants`);
+    } catch (error) {
+        console.error('❌ Failed to load participants:', error);
+        alert('Failed to load participants list. The app may not work correctly.');
+    }
     
-    // Generate boxes
-    generateBoxes();
+    try {
+        // Load saved state from Firebase (if available)
+        console.log('💾 Loading saved state from Firebase...');
+        await loadBoxesFromFirebase();
+    } catch (error) {
+        console.error('❌ Failed to load from Firebase:', error);
+    }
+    
+    try {
+        // Check if user already has a name stored
+        const storedName = localStorage.getItem('secretSantaUserName');
+        console.log(`🔍 Checking localStorage for saved name: ${storedName || 'none'}`);
+        
+        if (storedName) {
+            currentUserName = storedName;
+            isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
+            console.log(`👤 User found in storage: ${storedName} (Admin: ${isAdmin})`);
+            showMainContent();
+            connectToPubNub();
+        } else {
+            console.log('👤 No saved user - showing name modal');
+        }
+    } catch (error) {
+        console.error('❌ Failed to check stored user:', error);
+    }
+    
+    try {
+        // Setup event listeners
+        console.log('🎧 Setting up event listeners...');
+        setupEventListeners();
+        console.log('✅ Event listeners setup complete');
+    } catch (error) {
+        console.error('❌ CRITICAL: Failed to setup event listeners:', error);
+        alert('Failed to setup event listeners. Buttons may not work. Error: ' + error.message);
+    }
+    
+    try {
+        // Generate boxes
+        console.log('📦 Generating boxes...');
+        generateBoxes();
+    } catch (error) {
+        console.error('❌ Failed to generate boxes:', error);
+    }
+    
+    console.log('🎅 === INITIALIZATION COMPLETE ===');
 }
 
 // Helper function to convert name to Camel Case
@@ -110,6 +144,35 @@ async function loadParticipants() {
     }
 }
 
+// Load state from Firebase
+// Wrapper function to load state from Firebase
+async function loadBoxesFromFirebase() {
+    const savedBoxes = await loadStateFromFirebase();
+    
+    if (savedBoxes && Object.keys(savedBoxes).length > 0) {
+        // Validate saved boxes match current participants count
+        if (Object.keys(savedBoxes).length === TOTAL_BOXES) {
+            boxes = savedBoxes;
+            console.log('✅ Using saved box assignments from Firebase');
+        } else {
+            console.log('⚠️ Saved boxes count mismatch, reinitializing');
+            initializeAssignments();
+            await saveBoxesToFirebase();
+        }
+    } else {
+        console.log('ℹ️ No saved state in Firebase, initializing new assignments');
+        initializeAssignments();
+        await saveBoxesToFirebase();
+    }
+}
+
+// Wrapper function to save state to Firebase with logging
+async function saveBoxesToFirebase(actionType = 'state-update', userName = 'system', details = {}) {
+    const saveSuccess = await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
+    await logStateChangeToFirebase(actionType, userName, details);
+    return saveSuccess;
+}
+
 // Initialize random assignments for each box
 function initializeAssignments() {
     // Create a shuffled copy of participants for assignments
@@ -129,7 +192,7 @@ function initializeAssignments() {
         };
     }
     
-    console.log('Initialized box assignments:', boxes);
+    console.log('🎲 Initialized box assignments:', boxes);
 }
 
 function setupEventListeners() {
@@ -182,6 +245,7 @@ function setupEventListeners() {
     uploadBtn.addEventListener('click', () => uploadInput.click());
     uploadInput.addEventListener('change', handleUpload);
     clearUsersBtn.addEventListener('click', handleClearUsers);
+    scrambleBtn.addEventListener('click', handleScramble);
     showParticipantsBtn.addEventListener('click', showParticipants);
     closeParticipantsBtn.addEventListener('click', () => {
         participantsModal.classList.add('hidden');
@@ -190,6 +254,9 @@ function setupEventListeners() {
 
 // Setup autocomplete functionality for any input element
 function setupAutocompleteForInput(input) {
+    console.log(`🔧 Setting up autocomplete for input: ${input.id}`);
+    console.log(`📊 Participants loaded: ${participants.length} names`);
+    
     let currentFocus = -1;
     
     // Create autocomplete container
@@ -197,21 +264,69 @@ function setupAutocompleteForInput(input) {
     autocompleteDiv.className = 'autocomplete-items';
     autocompleteDiv.id = `autocomplete-list-${input.id}`;
     input.parentNode.appendChild(autocompleteDiv);
+    console.log(`✅ Created autocomplete dropdown container: autocomplete-list-${input.id}`);
+    
+    // Create preview element for translucent auto-fill
+    const previewDiv = document.createElement('div');
+    previewDiv.className = 'autocomplete-preview';
+    previewDiv.id = `autocomplete-preview-${input.id}`;
+    input.parentNode.insertBefore(previewDiv, input);
+    console.log(`✅ Created preview element: autocomplete-preview-${input.id}`);
+    
+    // Function to update preview text
+    function updatePreview(inputValue) {
+        if (!inputValue) {
+            previewDiv.textContent = '';
+            return;
+        }
+        
+        // Find the best matching participant (starting with the input)
+        // Note: Uses startsWith() for more relevant preview (only shows completion for prefix matches)
+        const matches = participants.filter(name => 
+            name.toLowerCase().startsWith(inputValue.toLowerCase())
+        );
+        
+        console.log(`🔍 Preview search for "${inputValue}": found ${matches.length} matches`);
+        
+        if (matches.length > 0) {
+            const bestMatch = matches[0];
+            // Show the remaining part of the match
+            const previewText = bestMatch.substring(inputValue.length);
+            previewDiv.textContent = inputValue + previewText;
+            console.log(`💡 Preview showing: "${bestMatch}"`);
+        } else {
+            previewDiv.textContent = '';
+            console.log(`⚠️ No preview matches found`);
+        }
+    }
     
     input.addEventListener('input', function() {
         const val = this.value.trim();
+        console.log(`⌨️ Input event - value: "${val}"`);
+        
         closeList(input);
-        if (!val) return;
+        updatePreview(val);
+        if (!val) {
+            console.log(`⚠️ Empty input - skipping dropdown`);
+            return;
+        }
         
         currentFocus = -1;
         
         // Find matching participants
+        // Note: Uses includes() for broader search in dropdown (shows any partial matches)
         const matches = participants.filter(name => 
             name.toLowerCase().includes(val.toLowerCase())
         );
         
+        console.log(`🔍 Dropdown search for "${val}": found ${matches.length} matches`);
+        console.log(`📋 Matches:`, matches.slice(0, 5));
+        
         // Show top 5 matches
-        matches.slice(0, 5).forEach(match => {
+        const displayMatches = matches.slice(0, 5);
+        console.log(`📦 Creating ${displayMatches.length} dropdown items`);
+        
+        displayMatches.forEach((match, index) => {
             const div = document.createElement('div');
             div.className = 'autocomplete-item';
             
@@ -221,13 +336,22 @@ function setupAutocompleteForInput(input) {
                            `<strong>${match.substring(startIndex, startIndex + val.length)}</strong>` +
                            match.substring(startIndex + val.length);
             
+            console.log(`  ✨ Created dropdown item ${index + 1}: "${match}"`);
+            
             div.addEventListener('click', function() {
+                console.log(`👆 Clicked on: "${match}"`);
                 input.value = match;
                 closeList(input);
+                updatePreview('');
             });
             
             autocompleteDiv.appendChild(div);
         });
+        
+        console.log(`✅ Dropdown populated with ${autocompleteDiv.children.length} items`);
+        console.log(`📍 Dropdown element ID: ${autocompleteDiv.id}`);
+        console.log(`📍 Dropdown parent:`, autocompleteDiv.parentNode);
+        console.log(`📍 Dropdown visible:`, !autocompleteDiv.classList.contains('hidden'));
     });
     
     input.addEventListener('keydown', function(e) {
@@ -235,13 +359,26 @@ function setupAutocompleteForInput(input) {
         let items = document.getElementById(listId);
         if (items) items = items.getElementsByClassName('autocomplete-item');
         
-        if (e.keyCode === 40) { // Down arrow
+        if (e.key === 'Tab' && previewDiv.textContent) { // Tab key - accept preview
+            e.preventDefault();
+            input.value = previewDiv.textContent;
+            updatePreview('');
+            closeList(input);
+        } else if (e.key === 'ArrowRight' && previewDiv.textContent) { // Right arrow - accept preview
+            const cursorAtEnd = input.selectionStart === input.value.length;
+            if (cursorAtEnd) {
+                e.preventDefault();
+                input.value = previewDiv.textContent;
+                updatePreview('');
+                closeList(input);
+            }
+        } else if (e.key === 'ArrowDown') { // Down arrow
             currentFocus++;
             addActive(items);
-        } else if (e.keyCode === 38) { // Up arrow
+        } else if (e.key === 'ArrowUp') { // Up arrow
             currentFocus--;
             addActive(items);
-        } else if (e.keyCode === 13) { // Enter
+        } else if (e.key === 'Enter') { // Enter
             e.preventDefault();
             if (currentFocus > -1 && items) {
                 items[currentFocus].click();
@@ -255,6 +392,7 @@ function setupAutocompleteForInput(input) {
         if (currentFocus >= items.length) currentFocus = 0;
         if (currentFocus < 0) currentFocus = items.length - 1;
         items[currentFocus].classList.add('autocomplete-active');
+        console.log(`🎯 Active item set to index: ${currentFocus}`);
     }
     
     function removeActive(items) {
@@ -267,6 +405,7 @@ function setupAutocompleteForInput(input) {
         const listId = `autocomplete-list-${inputElement.id}`;
         const list = document.getElementById(listId);
         if (list) {
+            console.log(`🗑️ Clearing dropdown list: ${listId} (had ${list.children.length} items)`);
             list.innerHTML = '';
         }
     }
@@ -274,6 +413,7 @@ function setupAutocompleteForInput(input) {
     // Close autocomplete when clicking outside
     document.addEventListener('click', function(e) {
         if (e.target !== input) {
+            console.log(`👆 Clicked outside input - closing dropdown`);
             closeList(input);
         }
     });
@@ -319,7 +459,7 @@ function handleAdminLogin() {
     const submitBtn = document.getElementById('adminPasswordSubmit');
     const cancelBtn = document.getElementById('adminPasswordCancel');
     
-    const handleSubmit = () => {
+    const handleSubmit = async () => {
         const password = passwordInput.value;
         if (!password) {
             alert('Please enter a password');
@@ -330,6 +470,10 @@ function handleAdminLogin() {
             currentUserName = ADMIN_NAME;
             isAdmin = true;
             localStorage.setItem('secretSantaUserName', ADMIN_NAME);
+            
+            // Sign in anonymously to Firebase
+            await signInAnonymously();
+            
             document.body.removeChild(passwordModal);
             showMainContent();
         } else {
@@ -356,25 +500,40 @@ function handleAdminLogin() {
     passwordInput.focus();
 }
 
-function handleNameSubmit() {
+async function handleNameSubmit() {
     const name = userNameInput.value.trim();
+    console.log(`📝 Name submit clicked - input value: "${name}"`);
+    
     if (name === '') {
+        console.log('⚠️ Empty name - showing alert');
         alert('Please select your name from the list');
         return;
     }
     
     // Find closest match in participants list
     const camelCaseName = toCamelCase(name);
+    console.log(`🔄 Converted to camel case: "${camelCaseName}"`);
+    
     const exactMatch = participants.find(p => p.toLowerCase() === camelCaseName.toLowerCase());
+    console.log(`🔍 Searching for exact match in ${participants.length} participants...`);
     
     if (!exactMatch) {
+        console.log(`❌ No match found for: "${camelCaseName}"`);
+        console.log(`📋 Available participants:`, participants.slice(0, 10));
         alert('Name not found in participants list. Please select from the suggested names.');
         return;
     }
     
+    console.log(`✅ Match found: "${exactMatch}"`);
     currentUserName = exactMatch; // Use exact match from participants
     isAdmin = false; // Regular users cannot become admin via normal login
     localStorage.setItem('secretSantaUserName', currentUserName);
+    console.log(`💾 Saved to localStorage: "${currentUserName}"`);
+    
+    // Sign in anonymously to Firebase
+    await signInAnonymously();
+    
+    console.log(`🚀 Showing main content...`);
     showMainContent();
 }
 
@@ -452,14 +611,34 @@ function updateAdminControls() {
     }
 }
 
-function handleAdminLogout() {
+async function handleAdminLogout() {
     if (!isAdmin) return;
     
     if (confirm('Are you sure you want to logout as admin?')) {
+        // Clear admin status
         isAdmin = false;
-        updateAdminControls();
-        updateBoxDisplay();
-        alert('Logged out from admin mode.');
+        
+        // Clear current user name
+        currentUserName = '';
+        
+        // Remove from localStorage
+        localStorage.removeItem('secretSantaUserName');
+        
+        // Sign out from Firebase
+        await signOutAnonymously();
+        
+        // Disconnect from PubNub and Firebase using modular functions
+        disconnectPubNub();
+        disconnectFirebase();
+        isConnected = false;
+        
+        // Hide main content and show name modal
+        mainContent.classList.add('hidden');
+        nameModal.classList.remove('hidden');
+        
+        // Reset and focus on name input
+        userNameInput.value = '';
+        userNameInput.focus();
     }
 }
 
@@ -477,7 +656,7 @@ function handleChangeName() {
     changeNameInput.focus();
 }
 
-function handleChangeNameSubmit() {
+async function handleChangeNameSubmit() {
     const newName = changeNameInput.value.trim();
     
     if (!newName) {
@@ -504,6 +683,10 @@ function handleChangeNameSubmit() {
     // Update localStorage
     localStorage.setItem('secretSantaUserName', currentUserName);
     
+    // Sign out and sign in again with new identity
+    await signOutAnonymously();
+    await signInAnonymously();
+    
     // Update display
     currentUserNameSpan.textContent = currentUserName;
     
@@ -512,7 +695,7 @@ function handleChangeNameSubmit() {
     
     // Update all boxes that had the old picker name
     for (let boxNumber in boxes) {
-        if (boxes[boxNumber].picker === oldName) {
+        if (boxes[boxNumber] && boxes[boxNumber].picker === oldName) {
             boxes[boxNumber].picker = currentUserName;
         }
     }
@@ -556,18 +739,16 @@ function generateBoxes() {
         box.appendChild(contentDiv);
         box.addEventListener('click', () => handleBoxClick(i));
         
-        // Add admin remove button for claimed boxes
-        if (isAdmin) {
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'box-remove-btn hidden';
-            removeBtn.innerHTML = '×';
-            removeBtn.title = 'Remove selection';
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent box click
-                handleAdminRemove(i);
-            });
-            box.appendChild(removeBtn);
-        }
+        // Add admin remove button for claimed boxes (always create it, show/hide based on admin status)
+        const removeBtn = document.createElement('button');
+        removeBtn.className = 'box-remove-btn hidden';
+        removeBtn.innerHTML = '×';
+        removeBtn.title = 'Remove selection';
+        removeBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent box click
+            handleAdminRemove(i);
+        });
+        box.appendChild(removeBtn);
         
         col.appendChild(box);
         boxGrid.appendChild(col);
@@ -613,7 +794,18 @@ function handleBoxClick(boxNumber) {
             alert('Cannot unpick a box. You already saw who you\'re gifting, it will be unfair to unpick and pick someone else.');
         }
     } else if (!box.picker) {
-        // Box is available - select it and show assignment
+        // Check if non-admin user already has a box selected
+        if (!isAdmin) {
+            for (let boxNum in boxes) {
+                if (boxes[boxNum] && boxes[boxNum].picker === currentUserName) {
+                    alert('You have already selected a box. You cannot change your selection.');
+                    return;
+                }
+            }
+        }
+        
+        // Box is available - show loading state and select it
+        showBoxLoadingState(boxNumber);
         publishMessage({
             type: 'select-box',
             boxNumber,
@@ -650,6 +842,30 @@ function handleAdminRemove(boxNumber) {
             userName: box.picker,
             adminName: currentUserName
         });
+    }
+}
+
+function showBoxLoadingState(boxNumber) {
+    const boxElement = document.querySelector(`[data-box-number="${boxNumber}"]`);
+    if (!boxElement) return;
+    
+    const contentDiv = boxElement.querySelector('.box-content');
+    boxElement.classList.remove('available', 'selected', 'taken');
+    boxElement.classList.add('loading');
+    contentDiv.innerHTML = `
+        <div class="box-loading">
+            <div class="spinner-border spinner-border-sm text-primary mb-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div>Claiming box...</div>
+        </div>
+    `;
+}
+
+function hideBoxLoadingState(boxNumber) {
+    const boxElement = document.querySelector(`[data-box-number="${boxNumber}"]`);
+    if (boxElement) {
+        boxElement.classList.remove('loading');
     }
 }
 
@@ -714,44 +930,38 @@ function updateBoxDisplay() {
 function connectToPubNub() {
     showLoadingOverlay('Connecting to server...');
     
-    try {
-        // Initialize PubNub
-        pubnub = new PubNub({
-            publishKey: PUBNUB_CONFIG.publishKey,
-            subscribeKey: PUBNUB_CONFIG.subscribeKey,
-            userId: PUBNUB_CONFIG.userId
-        });
-        
-        // Add listeners
-        pubnub.addListener({
-            status: function(statusEvent) {
-                if (statusEvent.category === "PNConnectedCategory") {
-                    console.log('Connected to PubNub');
-                    isConnected = true;
-                    updateSyncStatus(true);
-                    hideLoadingOverlay();
-                    updateBoxDisplay();
-                    
-                    // Request current state
-                    requestCurrentState();
-                }
-            },
-            message: function(messageEvent) {
-                handleMessage(messageEvent.message);
+    // Setup Firebase real-time listeners using the modular function
+    setupFirebaseListeners((updatedBoxes) => {
+        if (updatedBoxes && JSON.stringify(updatedBoxes) !== JSON.stringify(boxes)) {
+            console.log('🔄 Firebase update detected, syncing boxes');
+            boxes = updatedBoxes;
+            updateBoxDisplay();
+        }
+    });
+    
+    // Initialize PubNub using the modular function
+    initializePubNub(
+        // onStatusChange callback
+        (connected) => {
+            isConnected = connected;
+            updateSyncStatus(connected);
+            if (connected) {
+                hideLoadingOverlay();
+                updateBoxDisplay();
+                requestCurrentState();
+            } else {
+                showLoadingOverlay('Connection error. Please check your PubNub keys.');
             }
-        });
-        
-        // Subscribe to the channel
-        pubnub.subscribe({
-            channels: [CHANNEL_NAME]
-        });
-        
-    } catch (error) {
-        console.error('PubNub connection error:', error);
-        isConnected = false;
-        showLoadingOverlay('Connection error. Please check your PubNub keys.');
-    }
+        },
+        // onMessage callback
+        (message) => {
+            handleMessage(message);
+        }
+    );
 }
+
+// Remove duplicate setupFirebaseListeners function - now using modular version
+
 
 function handleMessage(message) {
     console.log('Received message:', message);
@@ -763,30 +973,46 @@ function handleMessage(message) {
                 boxes = message.boxes;
                 updateBoxDisplay();
                 
-                // Save to repository (admin only, automatic)
+                // Save to Firebase with logging
                 if (isAdmin) {
-                    saveToRepository();
+                    saveBoxesToFirebase('state-response', currentUserName, { source: 'pubnub' });
                 }
             }
             break;
         
         case 'select-box':
-            // Remove any previous selection by this user
-            for (let boxNum in boxes) {
-                if (boxes[boxNum].picker === message.userName) {
-                    boxes[boxNum].picker = '';
+            // Handle the selection - but wait for Firebase confirmation before updating UI
+            (async () => {
+                // Remove any previous selection by this user
+                for (let boxNum in boxes) {
+                    if (boxes[boxNum] && boxes[boxNum].picker === message.userName) {
+                        boxes[boxNum].picker = '';
+                    }
                 }
-            }
-            // Add new selection
-            if (boxes[message.boxNumber]) {
-                boxes[message.boxNumber].picker = message.userName;
-            }
-            updateBoxDisplay();
-            
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
+                // Add new selection
+                if (boxes[message.boxNumber]) {
+                    boxes[message.boxNumber].picker = message.userName;
+                }
+                
+                // Save to Firebase with logging (save from all users, not just admin)
+                const saveSuccess = await saveBoxesToFirebase('select-box', message.userName, {
+                    boxNumber: message.boxNumber,
+                    assigned: boxes[message.boxNumber]?.assigned
+                });
+                
+                // Only update UI after Firebase confirms save (or if Firebase not available)
+                hideBoxLoadingState(message.boxNumber);
+                updateBoxDisplay();
+                
+                if (!saveSuccess) {
+                    console.warn('⚠️ Firebase save failed, but showing selection anyway (PubNub sync)');
+                }
+            })();
+            break;
+            saveBoxesToFirebase('select-box', message.userName, {
+                boxNumber: message.boxNumber,
+                assigned: boxes[message.boxNumber]?.assigned
+            });
             break;
         
         case 'unselect-box':
@@ -794,47 +1020,73 @@ function handleMessage(message) {
                 boxes[message.boxNumber].picker = '';
                 updateBoxDisplay();
                 
-                // Save to repository
-                if (isAdmin) {
-                    saveToRepository();
-                }
+                // Save to Firebase with logging (save from all users, not just admin)
+                saveBoxesToFirebase('unselect-box', message.userName, {
+                    boxNumber: message.boxNumber
+                });
             }
             break;
         
         case 'admin-remove-box':
             // Admin removing someone's box selection
-            if (boxes[message.boxNumber] && boxes[message.boxNumber].picker === message.userName) {
-                boxes[message.boxNumber].picker = '';
-                updateBoxDisplay();
-                
-                // Save to repository
-                if (isAdmin) {
-                    saveToRepository();
+            console.log(`🗑️ Admin remove request for box ${message.boxNumber}, user: ${message.userName}`);
+            console.log(`📦 Current box state:`, boxes[message.boxNumber]);
+            
+            if (boxes[message.boxNumber]) {
+                if (boxes[message.boxNumber].picker === message.userName) {
+                    console.log(`✅ Removing ${message.userName} from box ${message.boxNumber}`);
+                    boxes[message.boxNumber].picker = '';
+                    updateBoxDisplay();
+                    
+                    // Save to Firebase with logging
+                    saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
+                        boxNumber: message.boxNumber,
+                        removedUser: message.userName
+                    });
+                } else {
+                    console.log(`⚠️ Picker mismatch! Box has: "${boxes[message.boxNumber].picker}", message has: "${message.userName}"`);
                 }
+            } else {
+                console.log(`❌ Box ${message.boxNumber} does not exist in boxes object`);
             }
             break;
         
         case 'clear-users':
             // Clear all users - removes all pickers but keeps assignments
             for (let boxNum in boxes) {
-                boxes[boxNum].picker = '';
+                if (boxes[boxNum]) {
+                    boxes[boxNum].picker = '';
+                }
             }
             updateBoxDisplay();
             
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
+            // Save to Firebase with logging
+            saveBoxesToFirebase('clear-users', currentUserName, {
+                totalCleared: Object.keys(boxes).length
+            });
             break;
         
         case 'upload-boxes':
             boxes = message.boxes || {};
             updateBoxDisplay();
             
-            // Save to repository
-            if (isAdmin) {
-                saveToRepository();
-            }
+            // Save to Firebase with logging
+            saveBoxesToFirebase('upload-boxes', currentUserName, {
+                totalBoxes: Object.keys(boxes).length
+            });
+            break;
+        
+        case 'scramble-boxes':
+            // Scramble assignments - update box assignments from admin
+            boxes = message.boxes || {};
+            updateBoxDisplay();
+            
+            // Save to Firebase with logging
+            saveBoxesToFirebase('scramble-boxes', currentUserName, {
+                totalBoxes: Object.keys(boxes).length
+            });
+            
+            alert('🔀 Admin has scrambled the box assignments! Your assignment may have changed.');
             break;
         
         case 'name-change':
@@ -865,7 +1117,7 @@ function requestCurrentState() {
     
     // If no response after 2 seconds, use initialized state
     setTimeout(() => {
-        if (Object.keys(boxes).filter(k => boxes[k].picker).length === 0) {
+        if (Object.keys(boxes).filter(k => boxes[k] && boxes[k].picker).length === 0) {
             console.log('Using initialized assignments');
             updateBoxDisplay();
         }
@@ -922,8 +1174,27 @@ function downloadJSON() {
 }
 
 function handleUpload(event) {
+    if (!isAdmin) {
+        event.target.value = '';
+        return;
+    }
+    
     const file = event.target.files[0];
     if (!file) return;
+    
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to upload new box assignments:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Upload cancelled.');
+        event.target.value = '';
+        return;
+    }
+    
+    // Confirm action
+    if (!confirm('⚠️ WARNING: This will replace all current box assignments!\n\nAre you sure you want to continue?')) {
+        event.target.value = '';
+        return;
+    }
     
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -931,9 +1202,9 @@ function handleUpload(event) {
             const data = JSON.parse(e.target.result);
             
             if (data.boxes && typeof data.boxes === 'object') {
-                // Validate the data
+                // Validate the data - check each box entry is either null or has required fields
                 const isValid = Object.values(data.boxes).every(box => 
-                    box.hasOwnProperty('picker') && box.hasOwnProperty('assigned')
+                    box === null || (box && box.hasOwnProperty('picker') && box.hasOwnProperty('assigned'))
                 );
                 
                 if (isValid) {
@@ -942,15 +1213,15 @@ function handleUpload(event) {
                         type: 'upload-boxes',
                         boxes: data.boxes
                     });
-                    alert('Successfully loaded box assignments!');
+                    alert('✅ Successfully loaded box assignments!');
                 } else {
-                    alert('Invalid file format: missing picker or assigned fields');
+                    alert('❌ Invalid file format: missing picker or assigned fields');
                 }
             } else {
-                alert('Invalid file format: missing boxes data');
+                alert('❌ Invalid file format: missing boxes data');
             }
         } catch (error) {
-            alert('Error reading file: ' + error.message);
+            alert('❌ Error reading file: ' + error.message);
         }
     };
     reader.readAsText(file);
@@ -962,12 +1233,67 @@ function handleUpload(event) {
 function handleClearUsers() {
     if (!isAdmin) return;
     
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to clear all users:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Action cancelled.');
+        return;
+    }
+    
     if (!confirm('Are you sure you want to CLEAR ALL USERS? This will remove all pickers from all boxes but keep the gift assignments intact.\n\nThis is useful for clearing old test data before the real event.')) {
         return;
     }
     
     // Publish clear-users to all clients
     publishMessage({ type: 'clear-users' });
+}
+
+// Handle scramble button - reshuffles box assignments (admin only)
+function handleScramble() {
+    if (!isAdmin) return;
+    
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to scramble assignments:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Action cancelled.');
+        return;
+    }
+    
+    if (!confirm('🔀 SCRAMBLE ASSIGNMENTS\n\nThis will completely re-randomize who is assigned to each box number.\n\n⚠️ WARNING: This will affect EVERYONE\'s assignments!\n\nAre you absolutely sure you want to do this?')) {
+        return;
+    }
+    
+    // Create a fresh shuffled list of participants
+    const shuffled = [...participants];
+    
+    // Fisher-Yates shuffle
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Re-assign each box while keeping who picked it
+    for (let i = 1; i <= TOTAL_BOXES; i++) {
+        if (boxes[i]) {
+            boxes[i].assigned = shuffled[i - 1]; // New assignment
+            // Keep the picker as-is
+        }
+    }
+    
+    console.log('🔀 Scrambled box assignments:', boxes);
+    
+    // Publish scramble message to all clients
+    publishMessage({ 
+        type: 'scramble-boxes',
+        boxes: boxes
+    });
+    
+    // Save to Firebase with logging
+    saveBoxesToFirebase('scramble-boxes', currentUserName, {
+        totalBoxes: TOTAL_BOXES
+    });
+    
+    alert('✅ Box assignments have been scrambled! All users will see the new assignments.');
 }
 
 // Show participants list in a modal
@@ -998,7 +1324,7 @@ function showParticipants() {
             let giftingTo = '-';
             
             for (let boxNum in boxes) {
-                if (boxes[boxNum].picker === participant) {
+                if (boxes[boxNum] && boxes[boxNum].picker === participant) {
                     pickedBox = boxNum;
                     giftingTo = boxes[boxNum].assigned || '-';
                     break;
@@ -1023,22 +1349,11 @@ function showParticipants() {
 }
 
 // Save current state to repository (manual for GitHub Pages - shows instructions)
+// This function is kept for backward compatibility but is now deprecated
+// The actual Firebase saving is handled in firebase-integration.js
 function saveToRepository() {
-    if (!isAdmin) return;
-    
-    // Create the JSON data
-    const data = {
-        boxes: boxes,
-        participants: participants,
-        totalBoxes: TOTAL_BOXES,
-        lastUpdated: new Date().toISOString()
-    };
-    
-    console.log('Repository state to save:', data);
-    
-    // For GitHub Pages, we can't automatically commit
-    // Instead, we'll provide download instructions to admin
-    // In a real implementation with server-side code, this would auto-commit
+    // Legacy function - no longer used
+    console.log('ℹ️ Legacy saveToRepository called - using Firebase instead');
 }
 
 function showLoadingOverlay(message) {
@@ -1057,4 +1372,21 @@ function hideLoadingOverlay() {
 }
 
 // Start the application
-init();
+(function() {
+    console.log('🚀 === SCRIPT LOADED - ATTEMPTING TO START APPLICATION ===');
+    
+    // Check if required functions exist
+    console.log('Checking dependencies:');
+    console.log('  - init function exists:', typeof init === 'function');
+    console.log('  - participants array exists:', typeof participants !== 'undefined');
+    console.log('  - firebase object exists:', typeof firebase !== 'undefined');
+    console.log('  - PubNub object exists:', typeof PubNub !== 'undefined');
+    
+    try {
+        init();
+    } catch (error) {
+        console.error('❌ CRITICAL ERROR during initialization:', error);
+        console.error('Stack trace:', error.stack);
+        alert('Application failed to start. Check console for details. Error: ' + error.message);
+    }
+})();
