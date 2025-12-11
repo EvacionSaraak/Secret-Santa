@@ -320,7 +320,7 @@ body {
 
 /* Box Styles - Using Bootstrap Grid */
 .box {
-    min-height: 100px;
+    min-height: 90px;
     height: auto;
     display: flex;
     flex-direction: column;
@@ -336,11 +336,14 @@ body {
     position: relative;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    /* Allow width expansion by constraining height */
+    max-height: 150px;
 }
 
 @media (min-width: 768px) {
     .box {
-        min-height: 120px;
+        min-height: 100px;
+        max-height: 160px;
         padding: 1rem;
     }
 }
@@ -526,6 +529,32 @@ body {
 
 .box-remove-btn.hidden {
     display: none;
+}
+
+/* Wide box for long names - expand width instead of height */
+.col-wide {
+    /* Override Bootstrap column sizing to allow wider boxes */
+    flex: 0 0 auto;
+    width: auto;
+    min-width: 50%; /* Take at least half the row on mobile */
+}
+
+@media (min-width: 576px) {
+    .col-wide {
+        min-width: 33.333%; /* Take at least 1/3 on small screens */
+    }
+}
+
+@media (min-width: 768px) {
+    .col-wide {
+        min-width: 25%; /* Take at least 1/4 on medium screens */
+    }
+}
+
+@media (min-width: 992px) {
+    .col-wide {
+        min-width: 16.666%; /* Take at least 1/6 on large screens */
+    }
 }
 
 /* Mobile Optimizations */
