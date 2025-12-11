@@ -392,10 +392,17 @@ body {
     }
 }
 
+/* Box Grid Container - Center boxes */
+#boxGrid {
+    justify-content: center;
+    align-items: start;
+}
+
 /* Box Styles - Using Bootstrap Grid */
 .box {
     min-height: 100px;
     height: auto;
+    width: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -405,17 +412,18 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     background: white;
-    padding: 0.75rem;
+    padding: 0.75rem 0.5rem;
     text-align: center;
     position: relative;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    white-space: normal;
 }
 
 @media (min-width: 768px) {
     .box {
-        min-height: 120px;
-        padding: 1rem;
+        min-height: 100px;
+        padding: 1rem 0.75rem;
     }
 }
 
@@ -474,12 +482,13 @@ body {
 .box-number {
     font-size: 1.5rem;
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 3px;
+    line-height: 1.2;
 }
 
 @media (min-width: 768px) {
     .box-number {
-        font-size: 2rem;
+        font-size: 1.75rem;
     }
 }
 
@@ -515,23 +524,25 @@ body {
 
 /* New box content styles */
 .box-content {
-    font-size: 0.75rem; /* Reduced from 0.85rem */
+    font-size: 0.75rem;
     word-break: break-word;
     max-width: 100%;
-    overflow: visible; /* Changed from hidden to allow expansion */
-    white-space: normal; /* Allow text wrapping */
+    overflow: visible;
+    white-space: normal;
+    line-height: 1.3;
 }
 
 .box-picker {
-    font-size: 0.7rem; /* Reduced from 0.75rem */
+    font-size: 0.7rem;
     margin-bottom: 4px;
 }
 
 .box-assigned {
-    font-size: 0.75rem; /* Reduced from 0.9rem */
+    font-size: 0.75rem;
     font-weight: 600;
     word-wrap: break-word;
     overflow-wrap: break-word;
+    line-height: 1.4;
 }
 
 .box.selected .box-assigned {
