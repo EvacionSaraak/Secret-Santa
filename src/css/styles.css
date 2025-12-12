@@ -394,23 +394,26 @@ body {
 
 /* Box Grid Container - Center boxes */
 #boxGrid {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     align-items: start;
+    gap: 1rem;
 }
 
 /* Box Styles - Using Bootstrap Grid */
 .box {
     /* Flexible width based on content
-       Standard boxes: 80-100px min-width (compact for short names/numbers)
-       Wide boxes (.box-wide): 150-500px min-width (for long names >15 chars) */
+       Standard boxes: 80-100px size (compact, box-like for short names/numbers)
+       Wide boxes (.box-wide): 150-500px width (for long names >15 chars) */
     flex: 0 0 auto;
+    width: 100px;
     min-width: 80px;
-    max-width: 100%;
+    max-width: 100px;
     
     /* Constrained height to encourage horizontal growth */
     min-height: 80px;
     height: auto;
-    width: 100%;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -430,6 +433,8 @@ body {
 
 @media (min-width: 768px) {
     .box {
+        width: 120px;
+        max-width: 120px;
         min-height: 100px;
         padding: 1rem 0.75rem;
     }
@@ -666,6 +671,7 @@ body {
 
 /* Wide box for long names - expand width instead of height */
 .box-wide {
+    width: auto;
     min-width: 150px;
     max-width: 350px;
 }
@@ -693,6 +699,10 @@ body {
 
 /* Mobile Optimizations */
 @media (max-width: 575px) {
+    #boxGrid {
+        gap: 0.75rem;
+    }
+    
     .box-number {
         font-size: 1.25rem;
     }
@@ -703,6 +713,8 @@ body {
     }
     
     .box {
+        width: 90px;
+        max-width: 90px;
         min-height: 90px;
         padding: 0.5rem;
     }
@@ -711,6 +723,8 @@ body {
 /* Tablet Optimizations */
 @media (min-width: 576px) and (max-width: 991px) {
     .box {
+        width: 110px;
+        max-width: 110px;
         min-height: 110px;
     }
 }
