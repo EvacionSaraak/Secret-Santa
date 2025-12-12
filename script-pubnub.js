@@ -683,7 +683,9 @@ async function handleChangeNameSubmit() {
     // Check if the target name already has a claimed box
     for (let boxNum in boxes) {
         if (boxes[boxNum] && boxes[boxNum].picker === trimmedName) {
-            alert(`Cannot change to "${trimmedName}" because they have already claimed a box. Each person can only have one claimed box.`);
+            // Silently prevent name change - just close the modal
+            changeNameModal.classList.add('hidden');
+            changeNameInput.value = '';
             return;
         }
     }
