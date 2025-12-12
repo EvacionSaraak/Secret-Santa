@@ -680,6 +680,16 @@ async function handleChangeNameSubmit() {
         return; // No change
     }
     
+    // Check if the target name already has a claimed box
+    for (let boxNum in boxes) {
+        if (boxes[boxNum] && boxes[boxNum].picker === trimmedName) {
+            // Silently prevent name change - just close the modal
+            changeNameModal.classList.add('hidden');
+            changeNameInput.value = '';
+            return;
+        }
+    }
+    
     const oldName = currentUserName;
     currentUserName = trimmedName;
     
