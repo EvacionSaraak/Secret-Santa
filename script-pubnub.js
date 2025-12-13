@@ -39,6 +39,7 @@ const scrambleBtn = document.getElementById('scrambleBtn');
 const showParticipantsBtn = document.getElementById('showParticipantsBtn');
 const participantsModal = document.getElementById('participantsModal');
 const closeParticipantsBtn = document.getElementById('closeParticipantsBtn');
+const downloadNonPickersBtn = document.getElementById('downloadNonPickersBtn');
 const loadingOverlay = document.getElementById('loadingOverlay');
 const connectionStatus = document.getElementById('connectionStatus');
 const syncIndicator = document.querySelector('.sync-indicator');
@@ -253,6 +254,10 @@ function setupEventListeners() {
     closeParticipantsBtn.addEventListener('click', () => {
         participantsModal.classList.add('hidden');
     });
+    
+    if (downloadNonPickersBtn) {
+        downloadNonPickersBtn.addEventListener('click', downloadNonPickers);
+    }
 }
 
 // Setup autocomplete functionality for any input element
@@ -1193,6 +1198,50 @@ function downloadJSON() {
     URL.revokeObjectURL(url);
 }
 
+// Download list of participants who haven't picked a box
+function downloadNonPickers() {
+    if (!isAdmin) return;
+    
+    // Find participants who haven't picked
+    const nonPickers = [];
+    
+    participants.forEach(participant => {
+        let hasPicked = false;
+        for (let boxNum in boxes) {
+            if (boxes[boxNum] && boxes[boxNum].picker === participant) {
+                hasPicked = true;
+                break;
+            }
+        }
+        if (!hasPicked) {
+            nonPickers.push(participant);
+        }
+    });
+    
+    if (nonPickers.length === 0) {
+        alert('All participants have picked their boxes!');
+        return;
+    }
+    
+    // Create CSV content
+    let csvContent = 'Name\n';
+    nonPickers.forEach(name => {
+        csvContent += `"${name}"\n`;
+    });
+    
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `non-pickers-${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
 function handleUpload(event) {
     if (!isAdmin) {
         event.target.value = '';
@@ -1320,6 +1369,9 @@ function handleScramble() {
 function showParticipants() {
     const tableContainer = document.getElementById('participantsTableContainer');
     
+    // Track non-pickers for the download button
+    const nonPickers = [];
+    
     // Create Bootstrap table
     let html = '<table class="table table-striped table-hover">';
     html += '<thead class="table-light"><tr>';
@@ -1329,30 +1381,47 @@ function showParticipants() {
     if (isAdmin) {
         html += '<th scope="col" class="text-center">Box Picked</th>';
         html += '<th scope="col">Gifting To</th>';
+        html += '<th scope="col" class="text-center">Status</th>';
     }
     
     html += '</tr></thead><tbody>';
     
     participants.forEach((participant, index) => {
-        html += '<tr>';
+        // Find which box this participant picked
+        let pickedBox = '-';
+        let giftingTo = '-';
+        let hasPicked = false;
+        
+        for (let boxNum in boxes) {
+            if (boxes[boxNum] && boxes[boxNum].picker === participant) {
+                pickedBox = boxNum;
+                giftingTo = boxes[boxNum].assigned || '-';
+                hasPicked = true;
+                break;
+            }
+        }
+        
+        // Track non-pickers for admin
+        if (isAdmin && !hasPicked) {
+            nonPickers.push(participant);
+        }
+        
+        // Highlight row for non-pickers in admin view
+        const rowClass = isAdmin && !hasPicked ? 'table-warning' : '';
+        html += `<tr class="${rowClass}">`;
         html += `<td class="text-center">${index + 1}</td>`;
         html += `<td>${participant}</td>`;
         
         if (isAdmin) {
-            // Find which box this participant picked
-            let pickedBox = '-';
-            let giftingTo = '-';
-            
-            for (let boxNum in boxes) {
-                if (boxes[boxNum] && boxes[boxNum].picker === participant) {
-                    pickedBox = boxNum;
-                    giftingTo = boxes[boxNum].assigned || '-';
-                    break;
-                }
-            }
-            
             html += `<td class="text-center"><span class="badge ${pickedBox === '-' ? 'bg-secondary' : 'bg-primary'}">${pickedBox}</span></td>`;
             html += `<td>${giftingTo}</td>`;
+            html += `<td class="text-center">`;
+            if (hasPicked) {
+                html += '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Picked</span>';
+            } else {
+                html += '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle"></i> Not Picked</span>';
+            }
+            html += '</td>';
         }
         
         html += '</tr>';
@@ -1362,9 +1431,26 @@ function showParticipants() {
     
     if (!isAdmin) {
         html += '<div class="alert alert-info mt-3" role="alert"><small><i class="bi bi-info-circle"></i> As a participant, you can only see the list of names. Admin can see who picked which box and assignments.</small></div>';
+    } else if (nonPickers.length > 0) {
+        html += `<div class="alert alert-warning mt-3" role="alert">`;
+        html += `<i class="bi bi-exclamation-triangle"></i> <strong>${nonPickers.length} participant(s) haven't picked a box yet.</strong>`;
+        html += `<br><small>Highlighted rows show participants who haven't made their selection.</small>`;
+        html += `</div>`;
+    } else {
+        html += '<div class="alert alert-success mt-3" role="alert"><i class="bi bi-check-circle"></i> <strong>All participants have picked their boxes!</strong></div>';
     }
     
     tableContainer.innerHTML = html;
+    
+    // Show/hide download button for admin
+    if (downloadNonPickersBtn) {
+        if (isAdmin && nonPickers.length > 0) {
+            downloadNonPickersBtn.classList.remove('hidden');
+        } else {
+            downloadNonPickersBtn.classList.add('hidden');
+        }
+    }
+    
     participantsModal.classList.remove('hidden');
 }
 
