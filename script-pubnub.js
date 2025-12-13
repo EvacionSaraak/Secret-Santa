@@ -1216,13 +1216,18 @@ function getParticipantBoxDetails(participantName) {
     };
 }
 
-// Helper function to sanitize CSV content to prevent formula injection
+// Helper function to sanitize CSV content to prevent formula injection and handle special characters
 function sanitizeCSVField(field) {
+    let str = String(field);
+    
     // Prevent CSV injection by escaping formula characters
-    const str = String(field);
     if (str.startsWith('=') || str.startsWith('+') || str.startsWith('-') || str.startsWith('@')) {
-        return `'${str}`;  // Prefix with single quote to prevent formula execution
+        str = `'${str}`;  // Prefix with single quote to prevent formula execution
     }
+    
+    // Escape quotes by doubling them (CSV standard)
+    str = str.replace(/"/g, '""');
+    
     return str;
 }
 
@@ -1241,7 +1246,7 @@ function downloadNonPickers() {
     });
     
     if (nonPickers.length === 0) {
-        // Don't show alert - user already saw the success message in the modal
+        // Nothing to download when all participants have picked
         return;
     }
     
