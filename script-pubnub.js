@@ -1198,14 +1198,22 @@ function downloadJSON() {
     URL.revokeObjectURL(url);
 }
 
-// Helper function to check if a participant has picked a box
-function hasParticipantPicked(participantName) {
+// Helper function to get participant's box details
+function getParticipantBoxDetails(participantName) {
     for (let boxNum in boxes) {
         if (boxes[boxNum] && boxes[boxNum].picker === participantName) {
-            return true;
+            return {
+                hasPicked: true,
+                boxNumber: boxNum,
+                giftingTo: boxes[boxNum].assigned || '-'
+            };
         }
     }
-    return false;
+    return {
+        hasPicked: false,
+        boxNumber: '-',
+        giftingTo: '-'
+    };
 }
 
 // Download list of participants who haven't picked a box
@@ -1216,7 +1224,8 @@ function downloadNonPickers() {
     const nonPickers = [];
     
     participants.forEach(participant => {
-        if (!hasParticipantPicked(participant)) {
+        const details = getParticipantBoxDetails(participant);
+        if (!details.hasPicked) {
             nonPickers.push(participant);
         }
     });
@@ -1227,10 +1236,7 @@ function downloadNonPickers() {
     }
     
     // Create CSV content
-    let csvContent = 'Name\n';
-    nonPickers.forEach(name => {
-        csvContent += `"${name}"\n`;
-    });
+    const csvContent = 'Name\n' + nonPickers.map(name => `"${name}"`).join('\n');
     
     // Create and download the file
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -1390,37 +1396,25 @@ function showParticipants() {
     html += '</tr></thead><tbody>';
     
     participants.forEach((participant, index) => {
-        // Find which box this participant picked
-        let pickedBox = '-';
-        let giftingTo = '-';
-        const hasPicked = hasParticipantPicked(participant);
-        
-        if (hasPicked) {
-            for (let boxNum in boxes) {
-                if (boxes[boxNum] && boxes[boxNum].picker === participant) {
-                    pickedBox = boxNum;
-                    giftingTo = boxes[boxNum].assigned || '-';
-                    break;
-                }
-            }
-        }
+        // Get participant's box details
+        const details = getParticipantBoxDetails(participant);
         
         // Track non-pickers for admin
-        if (isAdmin && !hasPicked) {
+        if (isAdmin && !details.hasPicked) {
             nonPickers.push(participant);
         }
         
         // Highlight row for non-pickers in admin view
-        const rowClass = isAdmin && !hasPicked ? 'table-warning' : '';
+        const rowClass = isAdmin && !details.hasPicked ? 'table-warning' : '';
         html += `<tr class="${rowClass}">`;
         html += `<td class="text-center">${index + 1}</td>`;
         html += `<td>${participant}</td>`;
         
         if (isAdmin) {
-            html += `<td class="text-center"><span class="badge ${pickedBox === '-' ? 'bg-secondary' : 'bg-primary'}">${pickedBox}</span></td>`;
-            html += `<td>${giftingTo}</td>`;
+            html += `<td class="text-center"><span class="badge ${details.boxNumber === '-' ? 'bg-secondary' : 'bg-primary'}">${details.boxNumber}</span></td>`;
+            html += `<td>${details.giftingTo}</td>`;
             html += `<td class="text-center">`;
-            if (hasPicked) {
+            if (details.hasPicked) {
                 html += '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Picked</span>';
             } else {
                 html += '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle"></i> Not Picked</span>';
