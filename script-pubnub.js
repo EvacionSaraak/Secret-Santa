@@ -1200,12 +1200,12 @@ function downloadJSON() {
 
 // Helper function to get participant's box details
 function getParticipantBoxDetails(participantName) {
-    for (let boxNum in boxes) {
-        if (boxes[boxNum] && boxes[boxNum].picker === participantName) {
+    for (const [boxNum, box] of Object.entries(boxes)) {
+        if (box && box.picker === participantName) {
             return {
                 hasPicked: true,
                 boxNumber: boxNum,
-                giftingTo: boxes[boxNum].assigned || '-'
+                giftingTo: box.assigned || '-'
             };
         }
     }
@@ -1214,6 +1214,16 @@ function getParticipantBoxDetails(participantName) {
         boxNumber: '-',
         giftingTo: '-'
     };
+}
+
+// Helper function to sanitize CSV content to prevent formula injection
+function sanitizeCSVField(field) {
+    // Prevent CSV injection by escaping formula characters
+    const str = String(field);
+    if (str.startsWith('=') || str.startsWith('+') || str.startsWith('-') || str.startsWith('@')) {
+        return `'${str}`;  // Prefix with single quote to prevent formula execution
+    }
+    return str;
 }
 
 // Download list of participants who haven't picked a box
@@ -1231,12 +1241,12 @@ function downloadNonPickers() {
     });
     
     if (nonPickers.length === 0) {
-        alert('All participants have picked their boxes!');
+        // Don't show alert - user already saw the success message in the modal
         return;
     }
     
-    // Create CSV content
-    const csvContent = 'Name\n' + nonPickers.map(name => `"${name}"`).join('\n');
+    // Create CSV content with sanitized fields
+    const csvContent = 'Name\n' + nonPickers.map(name => `"${sanitizeCSVField(name)}"`).join('\n');
     
     // Create and download the file
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -1415,9 +1425,9 @@ function showParticipants() {
             html += `<td>${details.giftingTo}</td>`;
             html += `<td class="text-center">`;
             if (details.hasPicked) {
-                html += '<span class="badge bg-success"><i class="bi bi-check-circle"></i> Picked</span>';
+                html += '<span class="badge bg-success" aria-label="Picked"><i class="bi bi-check-circle" aria-hidden="true"></i> Picked</span>';
             } else {
-                html += '<span class="badge bg-warning text-dark"><i class="bi bi-exclamation-circle"></i> Not Picked</span>';
+                html += '<span class="badge bg-warning text-dark" aria-label="Not Picked"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> Not Picked</span>';
             }
             html += '</td>';
         }
