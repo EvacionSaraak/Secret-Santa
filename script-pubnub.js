@@ -1198,6 +1198,16 @@ function downloadJSON() {
     URL.revokeObjectURL(url);
 }
 
+// Helper function to check if a participant has picked a box
+function hasParticipantPicked(participantName) {
+    for (let boxNum in boxes) {
+        if (boxes[boxNum] && boxes[boxNum].picker === participantName) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // Download list of participants who haven't picked a box
 function downloadNonPickers() {
     if (!isAdmin) return;
@@ -1206,14 +1216,7 @@ function downloadNonPickers() {
     const nonPickers = [];
     
     participants.forEach(participant => {
-        let hasPicked = false;
-        for (let boxNum in boxes) {
-            if (boxes[boxNum] && boxes[boxNum].picker === participant) {
-                hasPicked = true;
-                break;
-            }
-        }
-        if (!hasPicked) {
+        if (!hasParticipantPicked(participant)) {
             nonPickers.push(participant);
         }
     });
@@ -1390,14 +1393,15 @@ function showParticipants() {
         // Find which box this participant picked
         let pickedBox = '-';
         let giftingTo = '-';
-        let hasPicked = false;
+        const hasPicked = hasParticipantPicked(participant);
         
-        for (let boxNum in boxes) {
-            if (boxes[boxNum] && boxes[boxNum].picker === participant) {
-                pickedBox = boxNum;
-                giftingTo = boxes[boxNum].assigned || '-';
-                hasPicked = true;
-                break;
+        if (hasPicked) {
+            for (let boxNum in boxes) {
+                if (boxes[boxNum] && boxes[boxNum].picker === participant) {
+                    pickedBox = boxNum;
+                    giftingTo = boxes[boxNum].assigned || '-';
+                    break;
+                }
             }
         }
         
