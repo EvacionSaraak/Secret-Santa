@@ -145,7 +145,7 @@ async function saveStateToFirebase(boxesData, participantsList, totalBoxes, acti
         let mergedBoxes = boxesData;
         
         // Skip merge protection for admin actions that intentionally clear/modify boxes
-        const skipMergeActions = ['admin-remove-box', 'clear-users', 'scramble-boxes', 'upload-boxes'];
+        const skipMergeActions = ['admin-remove-box', 'clear-users', 'scramble-boxes', 'upload-boxes', 'add-participant', 'remove-participant'];
         const shouldSkipMerge = skipMergeActions.includes(actionType);
         
         if (shouldSkipMerge) {

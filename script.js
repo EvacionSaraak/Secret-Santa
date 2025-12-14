@@ -1247,8 +1247,21 @@ function showParticipants() {
     // Track non-pickers for the download button
     const nonPickers = [];
     
+    // Add participant management section for admin
+    let html = '';
+    if (isAdmin) {
+        html += '<div class="mb-4 p-3 bg-light rounded">';
+        html += '<h6 class="mb-3"><i class="bi bi-person-plus-fill"></i> Manage Participants</h6>';
+        html += '<div class="input-group">';
+        html += '<input type="text" id="newParticipantInput" class="form-control" placeholder="Enter new participant name..." />';
+        html += '<button class="btn btn-success" id="addParticipantBtn"><i class="bi bi-plus-circle"></i> Add Participant</button>';
+        html += '</div>';
+        html += '<small class="text-muted mt-2 d-block"><i class="bi bi-info-circle"></i> Adding or removing participants will reinitialize all box assignments.</small>';
+        html += '</div>';
+    }
+    
     // Create Bootstrap table
-    let html = '<table class="table table-striped table-hover">';
+    html += '<table class="table table-striped table-hover">';
     html += '<thead class="table-light"><tr>';
     html += '<th scope="col" class="text-center">#</th>';
     html += '<th scope="col">Participant Name</th>';
@@ -1257,6 +1270,7 @@ function showParticipants() {
         html += '<th scope="col" class="text-center">Box Picked</th>';
         html += '<th scope="col">Gifting To</th>';
         html += '<th scope="col" class="text-center">Status</th>';
+        html += '<th scope="col" class="text-center">Actions</th>';
     }
     
     html += '</tr></thead><tbody>';
@@ -1286,6 +1300,9 @@ function showParticipants() {
                 html += '<span class="badge bg-warning text-dark" aria-label="Not Picked"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> Not Picked</span>';
             }
             html += '</td>';
+            html += `<td class="text-center">`;
+            html += `<button class="btn btn-sm btn-danger" onclick="removeParticipant('${participant.replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i> Remove</button>`;
+            html += `</td>`;
         }
         
         html += '</tr>';
@@ -1316,6 +1333,114 @@ function showParticipants() {
     }
     
     participantsModal.classList.remove('hidden');
+    
+    // Setup event listener for add participant button (if admin)
+    if (isAdmin) {
+        const addBtn = document.getElementById('addParticipantBtn');
+        const newParticipantInput = document.getElementById('newParticipantInput');
+        
+        if (addBtn && newParticipantInput) {
+            addBtn.addEventListener('click', () => {
+                const newName = newParticipantInput.value.trim();
+                if (newName) {
+                    addParticipant(newName);
+                    newParticipantInput.value = '';
+                }
+            });
+            
+            newParticipantInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    const newName = newParticipantInput.value.trim();
+                    if (newName) {
+                        addParticipant(newName);
+                        newParticipantInput.value = '';
+                    }
+                }
+            });
+        }
+    }
+}
+
+// Add a new participant (admin only)
+async function addParticipant(newName) {
+    if (!isAdmin) return;
+    
+    // Convert to camel case for consistency
+    const formattedName = toCamelCase(newName);
+    
+    // Check if participant already exists
+    if (participants.includes(formattedName)) {
+        alert(`Participant "${formattedName}" already exists in the list.`);
+        return;
+    }
+    
+    if (!confirm(`Add "${formattedName}" to the participants list?\n\nThis will reinitialize all box assignments and clear existing selections.`)) {
+        return;
+    }
+    
+    // Add to participants list
+    participants.push(formattedName);
+    TOTAL_BOXES = participants.length;
+    
+    // Reinitialize all assignments
+    initializeAssignments();
+    
+    // Save to Firebase
+    await saveBoxesToFirebase('add-participant', currentUserName, {
+        participantName: formattedName,
+        totalParticipants: participants.length
+    });
+    
+    // Update the display
+    updateBoxDisplay();
+    
+    // Refresh the modal
+    showParticipants();
+    
+    alert(`✅ Participant "${formattedName}" has been added!\n\nAll box assignments have been reinitialized.`);
+}
+
+// Remove a participant (admin only)
+async function removeParticipant(participantName) {
+    if (!isAdmin) return;
+    
+    // Find the participant
+    const index = participants.indexOf(participantName);
+    if (index === -1) {
+        alert(`Participant "${participantName}" not found.`);
+        return;
+    }
+    
+    // Check if they have picked a box
+    const details = getParticipantBoxDetails(participantName);
+    const warningMessage = details.hasPicked 
+        ? `Remove "${participantName}" from the participants list?\n\nThey have already picked box ${details.boxNumber}.\n\nThis will reinitialize all box assignments and clear existing selections.`
+        : `Remove "${participantName}" from the participants list?\n\nThis will reinitialize all box assignments and clear existing selections.`;
+    
+    if (!confirm(warningMessage)) {
+        return;
+    }
+    
+    // Remove from participants list
+    participants.splice(index, 1);
+    TOTAL_BOXES = participants.length;
+    
+    // Reinitialize all assignments
+    initializeAssignments();
+    
+    // Save to Firebase
+    await saveBoxesToFirebase('remove-participant', currentUserName, {
+        participantName: participantName,
+        totalParticipants: participants.length
+    });
+    
+    // Update the display
+    updateBoxDisplay();
+    
+    // Refresh the modal
+    showParticipants();
+    
+    alert(`✅ Participant "${participantName}" has been removed!\n\nAll box assignments have been reinitialized.`);
 }
 
 // Save current state to repository (manual for GitHub Pages - shows instructions)
