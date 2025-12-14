@@ -119,34 +119,59 @@ async function loadStateFromFirebase() {
 }
 
 /**
- * Save box assignments to Firebase
+ * Save box assignments to Firebase with merge protection
+ * This function first loads the latest state from Firebase, merges local changes,
+ * and then saves to prevent overwriting concurrent updates from other users.
  * @param {Object} boxesData - The boxes object to save
  * @param {Array} participantsList - List of participants
  * @param {number} totalBoxes - Total number of boxes
- * @returns {Promise<boolean>} True if save was successful, false otherwise
+ * @returns {Promise<{success: boolean, mergedBoxes: Object|null}>} Success status and merged boxes
  */
 async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
     if (!firebaseInitialized || !database) {
         console.log('ℹ️ Firebase not available, skipping save');
-        return false;
+        return { success: false, mergedBoxes: null };
     }
     
     try {
         const timestamp = new Date().toISOString();
         
-        // Save current state
-        await database.ref('secretSanta/boxes').set(boxesData);
+        // First, load the latest state from Firebase to avoid overwriting concurrent updates
+        const currentSnapshot = await database.ref('secretSanta/boxes').once('value');
+        const currentBoxes = currentSnapshot.val();
+        
+        // If there's existing data, merge it with our local changes
+        // This ensures we don't overwrite boxes that were claimed by others
+        let mergedBoxes = boxesData;
+        if (currentBoxes) {
+            mergedBoxes = { ...boxesData };
+            
+            // For each box in the current Firebase state, check if it has a picker
+            // that we don't have locally (concurrent claim by another user)
+            for (const boxNum in currentBoxes) {
+                if (currentBoxes[boxNum] && currentBoxes[boxNum].picker) {
+                    // If Firebase has a picker but our local state doesn't, use Firebase's version
+                    if (!boxesData[boxNum] || !boxesData[boxNum].picker) {
+                        mergedBoxes[boxNum] = currentBoxes[boxNum];
+                        console.log(`⚠️ Merged concurrent claim for box ${boxNum} from Firebase`);
+                    }
+                }
+            }
+        }
+        
+        // Save merged state
+        await database.ref('secretSanta/boxes').set(mergedBoxes);
         await database.ref('secretSanta/metadata').set({
             totalBoxes: totalBoxes,
             lastUpdated: timestamp,
             participants: participantsList
         });
         
-        console.log('✅ State saved to Firebase successfully');
-        return true;
+        console.log('✅ State saved to Firebase successfully with merge protection');
+        return { success: true, mergedBoxes: mergedBoxes };
     } catch (error) {
         console.error('❌ Error saving to Firebase:', error);
-        return false;
+        return { success: false, mergedBoxes: null };
     }
 }
 
@@ -182,6 +207,106 @@ async function logStateChangeToFirebase(actionType, userName, details = {}) {
         console.log(`📝 Logged action: ${actionType} by ${userName}`);
     } catch (error) {
         console.error('❌ Error logging to Firebase:', error);
+    }
+}
+
+/**
+ * Load a single box from Firebase
+ * @param {number} boxNumber - The box number to load
+ * @returns {Promise<Object|null>} Box data or null if not available
+ */
+async function loadSingleBoxFromFirebase(boxNumber) {
+    if (!firebaseInitialized || !database) {
+        console.log('ℹ️ Firebase not available');
+        return null;
+    }
+    
+    try {
+        const snapshot = await database.ref(`secretSanta/boxes/${boxNumber}`).once('value');
+        const boxData = snapshot.val();
+        
+        if (boxData) {
+            console.log(`✅ Loaded box ${boxNumber} from Firebase`);
+            return boxData;
+        } else {
+            console.log(`ℹ️ No data for box ${boxNumber} in Firebase`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`❌ Error loading box ${boxNumber} from Firebase:`, error);
+        return null;
+    }
+}
+
+/**
+ * Atomically claim a box using Firebase transaction to prevent race conditions
+ * @param {number} boxNumber - The box number to claim
+ * @param {string} userName - User attempting to claim the box
+ * @returns {Promise<{success: boolean, message: string, assigned?: string}>}
+ */
+async function claimBoxAtomic(boxNumber, userName) {
+    if (!firebaseInitialized || !database) {
+        console.log('ℹ️ Firebase not available, skipping atomic claim');
+        return { success: false, message: 'Firebase not available' };
+    }
+    
+    try {
+        const boxRef = database.ref(`secretSanta/boxes/${boxNumber}`);
+        
+        // Use transaction to ensure atomic update
+        const result = await boxRef.transaction((currentBox) => {
+            if (!currentBox) {
+                // Box doesn't exist yet
+                return undefined; // Abort transaction
+            }
+            
+            if (currentBox.picker && currentBox.picker !== '') {
+                // Box is already claimed by someone
+                return undefined; // Abort transaction - keep existing value
+            }
+            
+            // Box is available, claim it
+            return {
+                picker: userName,
+                assigned: currentBox.assigned
+            };
+        });
+        
+        if (result.committed) {
+            // Successfully claimed the box
+            const assigned = result.snapshot.val().assigned;
+            console.log(`✅ Box ${boxNumber} claimed successfully by ${userName}`);
+            return { 
+                success: true, 
+                message: 'Box claimed successfully',
+                assigned: assigned
+            };
+        } else {
+            // Transaction was aborted - box already claimed
+            console.log(`⚠️ Box ${boxNumber} claim failed - already taken`);
+            
+            // Get the current state to see who claimed it
+            const snapshot = await boxRef.once('value');
+            const currentBox = snapshot.val();
+            
+            if (currentBox && currentBox.picker) {
+                return { 
+                    success: false, 
+                    message: `Box already claimed by someone else. Please select another box.`
+                };
+            }
+            
+            return { 
+                success: false, 
+                message: 'Box claim failed. Please try again.'
+            };
+        }
+    } catch (error) {
+        console.error('❌ Error claiming box atomically:', error);
+        return { 
+            success: false, 
+            message: 'Error claiming box. Please try again.'
+        };
     }
 }
 
