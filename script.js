@@ -281,15 +281,39 @@ function setupEventListeners() {
         participantsModal.classList.add('hidden');
     });
     
-    // Event delegation for dynamically added remove participant buttons
+    // Event delegation for dynamically added participant management UI
     const participantsTableContainer = document.getElementById('participantsTableContainer');
     if (participantsTableContainer) {
+        // Handle remove participant button clicks
         participantsTableContainer.addEventListener('click', (e) => {
             if (e.target.closest('.remove-participant-btn')) {
                 const button = e.target.closest('.remove-participant-btn');
                 const participantName = button.getAttribute('data-participant-name');
                 if (participantName) {
                     removeParticipant(participantName);
+                }
+            }
+            
+            // Handle add participant button clicks
+            if (e.target.closest('#addParticipantBtn')) {
+                const input = document.getElementById('newParticipantInput');
+                if (input) {
+                    const newName = input.value.trim();
+                    if (newName) {
+                        addParticipant(newName);
+                        input.value = '';
+                    }
+                }
+            }
+        });
+        
+        // Handle Enter key in add participant input
+        participantsTableContainer.addEventListener('keypress', (e) => {
+            if (e.target.id === 'newParticipantInput' && e.key === 'Enter') {
+                const newName = e.target.value.trim();
+                if (newName) {
+                    addParticipant(newName);
+                    e.target.value = '';
                 }
             }
         });
@@ -1358,32 +1382,6 @@ function showParticipants() {
     }
     
     participantsModal.classList.remove('hidden');
-    
-    // Setup event listener for add participant button (if admin)
-    if (isAdmin) {
-        const addBtn = document.getElementById('addParticipantBtn');
-        const newParticipantInput = document.getElementById('newParticipantInput');
-        
-        if (addBtn && newParticipantInput) {
-            addBtn.addEventListener('click', () => {
-                const newName = newParticipantInput.value.trim();
-                if (newName) {
-                    addParticipant(newName);
-                    newParticipantInput.value = '';
-                }
-            });
-            
-            newParticipantInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    const newName = newParticipantInput.value.trim();
-                    if (newName) {
-                        addParticipant(newName);
-                        newParticipantInput.value = '';
-                    }
-                }
-            });
-        }
-    }
 }
 
 // Add a new participant (admin only)
