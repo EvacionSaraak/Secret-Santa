@@ -32,7 +32,8 @@ That's it! Super simple. 🎉
 ```
 Secret-Santa/
 ├── index.html                  # Main application file
-├── script-pubnub.js           # PubNub integration script
+├── script.js                   # Main application script
+├── firebase-integration.js     # Firebase integration and real-time sync
 ├── package.json               # NPM configuration
 ├── README.md                  # This file
 ├── src/                       # Source files
@@ -68,17 +69,18 @@ The application features a beautiful purple gradient interface where you can see
 
 ### Quick Setup (No technical skills needed!)
 
-**What you'll need:** A free PubNub account (takes 2 minutes to set up)
+**What you'll need:** A free Firebase account (takes 5 minutes to set up)
 
-1. **Get PubNub API keys** (free): [https://www.pubnub.com/](https://www.pubnub.com/)
+1. **Get Firebase Configuration** (free): [https://console.firebase.google.com/](https://console.firebase.google.com/)
    - Sign up for a free account
-   - Create a new app
-   - Copy your Publish Key and Subscribe Key
+   - Create a new project
+   - Enable Realtime Database
+   - Copy your configuration values
 
-2. **Update the keys in your code**:
-   - Open `script-pubnub.js` in a text editor
-   - Find lines 9-10
-   - Paste your keys there
+2. **Update the configuration in your code**:
+   - Open `firebase-integration.js` in a text editor
+   - Find the `FIREBASE_CONFIG` section at the top
+   - Paste your configuration values there
 
 3. **Add your participants**:
    - Open `data/participants.txt` in a text editor
@@ -98,12 +100,11 @@ The application features a beautiful purple gradient interface where you can see
    - Your Secret Santa is live at: `https://[your-username].github.io/[repository]/`
    - Share this link with all participants
 
-### 🔥 Firebase Setup (Recommended for Permanent Storage)
+### 🔥 Firebase Features
 
-**Firebase provides unlimited data retention and real-time sync!**
+**Firebase provides persistent storage and real-time sync!**
 
-Instead of PubNub's 7-day limit, Firebase stores your data permanently:
-- ✅ **Persistent Storage**: Assignments saved forever, not just 7 days
+- ✅ **Persistent Storage**: Assignments saved permanently, not just 7 days
 - ✅ **Real-time Sync**: All users see updates instantly
 - ✅ **Free Tier**: Generous limits perfect for Secret Santa
 - ✅ **No Re-randomization**: Assignments persist across page refreshes
@@ -112,18 +113,18 @@ Instead of PubNub's 7-day limit, Firebase stores your data permanently:
 1. Create a free Firebase account at [firebase.google.com](https://firebase.google.com/)
 2. Create a new project and enable Realtime Database
 3. Copy your config values
-4. Update `FIREBASE_CONFIG` in `script-pubnub.js`
+4. Update `FIREBASE_CONFIG` in `firebase-integration.js`
 
 📖 **Detailed guide**: See [FIREBASE_SETUP.md](FIREBASE_SETUP.md)
 
-### ⏰ Data Retention (PubNub Mode)
+### ⏰ Data Retention
 
-**If not using Firebase**, your selections are saved for 7 days with PubNub Message Persistence (free tier).
+**With Firebase**, your selections are saved permanently in the Firebase Realtime Database (free tier).
 
-**Important:** Since the free PubNub tier keeps data for 7 days:
-- Run your event within 7 days of the first selection
-- Admin should download JSON backups regularly (just in case)
-- Perfect for events running through the holiday season
+**Important:** 
+- Assignments persist indefinitely
+- Admin should still download JSON backups regularly (just in case)
+- Perfect for events running through the holiday season and beyond
 
 **Backing up your data:**
 1. Login as admin
@@ -147,7 +148,7 @@ As the event organizer, you have special admin access:
 - Clear all users (useful before the real event starts)
 - Change your name or any participant's name
 
-**Tip:** Change the admin password in `script-pubnub.js` (line 32) for better security!
+**Tip:** Change the admin password in `script.js` (line 17) for better security!
 
 ### 📝 Managing Participants
 
@@ -210,7 +211,7 @@ npm run deploy
 ## 💡 Frequently Asked Questions
 
 **Q: How long does my data last?**  
-A: Your selections are saved for 7 days with the free PubNub plan. Download a JSON backup for longer storage.
+A: With Firebase, your selections are saved permanently in the database. Download a JSON backup for extra safety.
 
 **Q: Can people cheat and see multiple assignments?**  
 A: Nope! Once you pick a box, you can't unpick it. Fair play is enforced.
@@ -231,10 +232,10 @@ A: Edit the `data/participants.txt` file, add or remove names (one per line), th
 A: Yes! It works with any number of participants. Just add all names to `data/participants.txt`.
 
 **Q: Is my data secure?**  
-A: The app uses PubNub's encrypted channels. Only participants in your list can access the event.
+A: The app uses Firebase's secure database with configurable security rules. Only participants in your list can access the event.
 
 **Q: Do I need to pay anything?**  
-A: Nope! The free PubNub tier works perfectly for Secret Santa events.
+A: Nope! The free Firebase tier works perfectly for Secret Santa events.
 
 ---
 
@@ -243,7 +244,8 @@ A: Nope! The free PubNub tier works perfectly for Secret Santa events.
 ```
 Secret-Santa/
 ├── index.html                  # Main application file
-├── script-pubnub.js           # PubNub integration script
+├── script.js                   # Main application script
+├── firebase-integration.js     # Firebase integration
 ├── package.json               # NPM configuration
 ├── README.md                  # This file
 ├── src/                       # Source files
@@ -270,10 +272,10 @@ Secret-Santa/
 ## 🔧 Technologies
 
 - **Frontend**: HTML5, CSS3, Vanilla JavaScript
-- **Real-time**: PubNub (GitHub Pages) or WebSocket (Cloudflare Workers)
-- **Data Persistence**: PubNub Message Persistence (7 days, free tier)
-- **State Management**: Durable Objects (Cloudflare) or in-memory (local)
-- **Deployment**: GitHub Pages, Cloudflare Workers, or local Node.js
+- **Real-time Sync**: Firebase Realtime Database
+- **Data Persistence**: Firebase Realtime Database (permanent storage)
+- **State Management**: Firebase listeners for live updates
+- **Deployment**: GitHub Pages, Firebase Hosting, or local Node.js
 
 ## 📝 License
 

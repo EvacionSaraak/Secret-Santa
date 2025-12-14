@@ -1,14 +1,14 @@
 # Firebase Setup Guide for Secret Santa
 
-This guide explains how to set up Firebase Realtime Database for persistent storage of Secret Santa assignments.
+This guide explains how to set up Firebase Realtime Database for your Secret Santa application.
 
 ## Why Firebase?
 
 Firebase provides:
-- **Persistent Storage**: Box assignments are saved permanently, not just for 1 week
+- **Persistent Storage**: Box assignments are saved permanently
 - **Real-time Sync**: All users see updates instantly across devices
 - **Free Tier**: Generous free tier that's perfect for Secret Santa events
-- **No Randomization**: Assignments are created once and persist across sessions
+- **No Re-randomization**: Assignments are created once and persist across sessions
 
 ## Setup Steps
 
@@ -41,7 +41,7 @@ Firebase provides:
 
 ### 4. Update Your Code
 
-Open `script-pubnub.js` and find the `FIREBASE_CONFIG` section at the top:
+Open `firebase-integration.js` and find the `FIREBASE_CONFIG` section:
 
 ```javascript
 const FIREBASE_CONFIG = {
@@ -124,8 +124,8 @@ secretSanta/
 
 ### Data not syncing across devices
 - Make sure Firebase real-time listeners are working
-- Check that PubNub is also properly configured
 - Verify both devices have network connectivity
+- Check Firebase Console for any errors
 
 ## Cost Considerations
 
@@ -160,10 +160,8 @@ To restore:
 
 ## Switching Between Storage Methods
 
-The app works with or without Firebase:
-- **With Firebase**: Persistent storage, survives page refreshes
-- **Without Firebase**: Falls back to session-based randomization
+The app is designed to work exclusively with Firebase:
+- **With Firebase configured**: Persistent storage with real-time sync
+- **Without Firebase configured**: The app will show a warning and may not function properly
 
-To disable Firebase without removing the code:
-- Simply don't configure the Firebase keys
-- The app will automatically fall back to local mode
+To use the application, Firebase configuration is required.
