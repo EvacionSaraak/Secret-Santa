@@ -1301,7 +1301,7 @@ function showParticipants() {
             }
             html += '</td>';
             html += `<td class="text-center">`;
-            html += `<button class="btn btn-sm btn-danger" onclick="removeParticipant('${participant.replace(/'/g, "\\'")}')"><i class="bi bi-trash"></i> Remove</button>`;
+            html += `<button class="btn btn-sm btn-danger remove-participant-btn" data-participant-name="${participant.replace(/"/g, '&quot;')}"><i class="bi bi-trash"></i> Remove</button>`;
             html += `</td>`;
         }
         
@@ -1358,6 +1358,17 @@ function showParticipants() {
                 }
             });
         }
+        
+        // Add event listeners for remove buttons
+        const removeButtons = document.querySelectorAll('.remove-participant-btn');
+        removeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const participantName = button.getAttribute('data-participant-name');
+                if (participantName) {
+                    removeParticipant(participantName);
+                }
+            });
+        });
     }
 }
 
