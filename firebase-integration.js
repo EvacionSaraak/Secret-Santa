@@ -119,34 +119,59 @@ async function loadStateFromFirebase() {
 }
 
 /**
- * Save box assignments to Firebase
+ * Save box assignments to Firebase with merge protection
+ * This function first loads the latest state from Firebase, merges local changes,
+ * and then saves to prevent overwriting concurrent updates from other users.
  * @param {Object} boxesData - The boxes object to save
  * @param {Array} participantsList - List of participants
  * @param {number} totalBoxes - Total number of boxes
- * @returns {Promise<boolean>} True if save was successful, false otherwise
+ * @returns {Promise<{success: boolean, mergedBoxes: Object|null}>} Success status and merged boxes
  */
 async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
     if (!firebaseInitialized || !database) {
         console.log('ℹ️ Firebase not available, skipping save');
-        return false;
+        return { success: false, mergedBoxes: null };
     }
     
     try {
         const timestamp = new Date().toISOString();
         
-        // Save current state
-        await database.ref('secretSanta/boxes').set(boxesData);
+        // First, load the latest state from Firebase to avoid overwriting concurrent updates
+        const currentSnapshot = await database.ref('secretSanta/boxes').once('value');
+        const currentBoxes = currentSnapshot.val();
+        
+        // If there's existing data, merge it with our local changes
+        // This ensures we don't overwrite boxes that were claimed by others
+        let mergedBoxes = boxesData;
+        if (currentBoxes) {
+            mergedBoxes = { ...boxesData };
+            
+            // For each box in the current Firebase state, check if it has a picker
+            // that we don't have locally (concurrent claim by another user)
+            for (const boxNum in currentBoxes) {
+                if (currentBoxes[boxNum] && currentBoxes[boxNum].picker) {
+                    // If Firebase has a picker but our local state doesn't, use Firebase's version
+                    if (!boxesData[boxNum] || !boxesData[boxNum].picker) {
+                        mergedBoxes[boxNum] = currentBoxes[boxNum];
+                        console.log(`⚠️ Merged concurrent claim for box ${boxNum} from Firebase`);
+                    }
+                }
+            }
+        }
+        
+        // Save merged state
+        await database.ref('secretSanta/boxes').set(mergedBoxes);
         await database.ref('secretSanta/metadata').set({
             totalBoxes: totalBoxes,
             lastUpdated: timestamp,
             participants: participantsList
         });
         
-        console.log('✅ State saved to Firebase successfully');
-        return true;
+        console.log('✅ State saved to Firebase successfully with merge protection');
+        return { success: true, mergedBoxes: mergedBoxes };
     } catch (error) {
         console.error('❌ Error saving to Firebase:', error);
-        return false;
+        return { success: false, mergedBoxes: null };
     }
 }
 

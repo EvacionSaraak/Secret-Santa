@@ -174,9 +174,22 @@ async function loadBoxesFromFirebase() {
 
 // Wrapper function to save state to Firebase with logging
 async function saveBoxesToFirebase(actionType = 'state-update', userName = 'system', details = {}) {
-    const saveSuccess = await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
+    const saveResult = await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
+    
+    // Update local state with merged boxes if merge occurred
+    if (saveResult.success && saveResult.mergedBoxes) {
+        const hadMerge = JSON.stringify(boxes) !== JSON.stringify(saveResult.mergedBoxes);
+        boxes = saveResult.mergedBoxes;
+        
+        // If state was merged with concurrent updates, refresh the display
+        if (hadMerge) {
+            console.log('🔄 Local state updated with merged data from Firebase');
+            updateBoxDisplay();
+        }
+    }
+    
     await logStateChangeToFirebase(actionType, userName, details);
-    return saveSuccess;
+    return saveResult.success;
 }
 
 // Initialize random assignments for each box
