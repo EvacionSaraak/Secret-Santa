@@ -127,7 +127,7 @@ async function loadStateFromFirebase() {
  * @param {number} totalBoxes - Total number of boxes
  * @returns {Promise<{success: boolean, mergedBoxes: Object|null}>} Success status and merged boxes
  */
-async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
+async function saveStateToFirebase(boxesData, participantsList, totalBoxes, actionType = 'state-update') {
     if (!firebaseInitialized || !database) {
         console.log('ℹ️ Firebase not available, skipping save');
         return { success: false, mergedBoxes: null };
@@ -143,7 +143,12 @@ async function saveStateToFirebase(boxesData, participantsList, totalBoxes) {
         // If there's existing data, merge it with our local changes
         // This ensures we don't overwrite boxes that were claimed by others
         let mergedBoxes = boxesData;
-        if (currentBoxes) {
+        
+        // Skip merge protection for admin actions that intentionally clear/modify boxes
+        const skipMergeActions = ['admin-remove-box', 'clear-users', 'scramble-boxes', 'upload-boxes'];
+        const shouldSkipMerge = skipMergeActions.includes(actionType);
+        
+        if (currentBoxes && !shouldSkipMerge) {
             mergedBoxes = { ...boxesData };
             
             // For each box in the current Firebase state, check if it has a picker
