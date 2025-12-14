@@ -2,8 +2,7 @@
 // Secret Santa Box Picker - Main Application Script
 // ===========================================================================
 // This is the main application logic. Configuration is in separate files:
-// - firebase-integration.js: Firebase database integration
-// - pubnub-integration.js: PubNub real-time messaging
+// - firebase-integration.js: Firebase database integration and real-time sync
 // ===========================================================================
 
 // State management
@@ -16,6 +15,9 @@ let TOTAL_BOXES = 0; // Will be set to participants.length
 const ADMIN_NAME = 'ADMIN'; // Admin has special account and cannot be a participant
 const ADMIN_PASSWORD = 'SecretSanta2025!'; // Admin password (keep secret!)
 let isAdmin = false;
+
+// Connection state
+let isConnected = false;
 
 // Box display configuration
 const LONG_NAME_THRESHOLD = 15; // Names longer than this will trigger wider box display
@@ -85,7 +87,7 @@ async function init() {
             isAdmin = (storedName === ADMIN_NAME); // Check if ADMIN account
             console.log(`👤 User found in storage: ${storedName} (Admin: ${isAdmin})`);
             showMainContent();
-            connectToPubNub();
+            connectToFirebase();
         } else {
             console.log('👤 No saved user - showing name modal');
         }
@@ -553,7 +555,7 @@ function showMainContent() {
     // Show/hide admin controls
     updateAdminControls();
     
-    connectToPubNub();
+    connectToFirebase();
 }
 
 function updateAdminControls() {
@@ -635,8 +637,7 @@ async function handleAdminLogout() {
         // Sign out from Firebase
         await signOutAnonymously();
         
-        // Disconnect from PubNub and Firebase using modular functions
-        disconnectPubNub();
+        // Disconnect from Firebase
         disconnectFirebase();
         isConnected = false;
         
@@ -718,12 +719,10 @@ async function handleChangeNameSubmit() {
         }
     }
     
-    // Broadcast name change to all clients
-    publishMessage({
-        type: 'name-change',
+    // Save state to Firebase (will sync to all clients via listeners)
+    await saveBoxesToFirebase('name-change', currentUserName, {
         oldName: oldName,
-        newName: currentUserName,
-        boxes: boxes
+        newName: currentUserName
     });
     
     // Update display
@@ -796,11 +795,10 @@ function handleBoxClick(boxNumber) {
         if (isAdmin) {
             // Admin can unpick (though they shouldn't have boxes)
             if (confirm('Do you want to unselect this box?')) {
-                publishMessage({
-                    type: 'unselect-box',
-                    boxNumber,
-                    userName: currentUserName
-                });
+                // Unselect the box
+                boxes[boxNumber].picker = '';
+                await saveBoxesToFirebase('unselect-box', currentUserName, { boxNumber });
+                updateBoxDisplay();
             }
         } else {
             // Non-admin cannot unpick
@@ -819,22 +817,34 @@ function handleBoxClick(boxNumber) {
         
         // Box is available - show loading state and select it
         showBoxLoadingState(boxNumber);
-        publishMessage({
-            type: 'select-box',
+        
+        // Remove any previous selection by this user
+        for (let boxNum in boxes) {
+            if (boxes[boxNum] && boxes[boxNum].picker === currentUserName) {
+                boxes[boxNum].picker = '';
+            }
+        }
+        
+        // Select the box
+        boxes[boxNumber].picker = currentUserName;
+        await saveBoxesToFirebase('select-box', currentUserName, {
             boxNumber,
-            userName: currentUserName
+            assigned: boxes[boxNumber].assigned
         });
+        
+        hideBoxLoadingState(boxNumber);
+        updateBoxDisplay();
     } else {
         // Box is taken by someone else
         if (isAdmin) {
             // Admin can remove the claim
             if (confirm(`This box is selected by ${box.picker}\nAssigned: ${box.assigned}\n\nDo you want to remove ${box.picker} from this box?`)) {
-                publishMessage({
-                    type: 'admin-remove-box',
+                boxes[boxNumber].picker = '';
+                await saveBoxesToFirebase('admin-remove-box', currentUserName, {
                     boxNumber,
-                    userName: box.picker,
-                    adminName: currentUserName
+                    removedUser: box.picker
                 });
+                updateBoxDisplay();
             }
         } else {
             alert(`This box is already claimed`);
@@ -842,19 +852,19 @@ function handleBoxClick(boxNumber) {
     }
 }
 
-function handleAdminRemove(boxNumber) {
+async function handleAdminRemove(boxNumber) {
     if (!isAdmin) return;
     
     const box = boxes[boxNumber];
     if (!box || !box.picker) return;
     
     if (confirm(`Remove ${box.picker} from box ${boxNumber}?`)) {
-        publishMessage({
-            type: 'admin-remove-box',
+        boxes[boxNumber].picker = '';
+        await saveBoxesToFirebase('admin-remove-box', currentUserName, {
             boxNumber,
-            userName: box.picker,
-            adminName: currentUserName
+            removedUser: box.picker
         });
+        updateBoxDisplay();
     }
 }
 
@@ -952,8 +962,8 @@ function updateBoxDisplay() {
     }
 }
 
-function connectToPubNub() {
-    showLoadingOverlay('Connecting to server...');
+function connectToFirebase() {
+    showLoadingOverlay('Connecting to Firebase...');
     
     // Setup Firebase real-time listeners using the modular function
     setupFirebaseListeners((updatedBoxes) => {
@@ -964,206 +974,13 @@ function connectToPubNub() {
         }
     });
     
-    // Initialize PubNub using the modular function
-    initializePubNub(
-        // onStatusChange callback
-        (connected) => {
-            isConnected = connected;
-            updateSyncStatus(connected);
-            if (connected) {
-                hideLoadingOverlay();
-                updateBoxDisplay();
-                requestCurrentState();
-            } else {
-                showLoadingOverlay('Connection error. Please check your PubNub keys.');
-            }
-        },
-        // onMessage callback
-        (message) => {
-            handleMessage(message);
-        }
-    );
+    // Mark as connected after Firebase setup
+    isConnected = true;
+    updateSyncStatus(true);
+    hideLoadingOverlay();
+    updateBoxDisplay();
 }
 
-// Remove duplicate setupFirebaseListeners function - now using modular version
-
-
-function handleMessage(message) {
-    console.log('Received message:', message);
-    
-    switch (message.type) {
-        case 'state-response':
-            // Update boxes from server
-            if (message.boxes && typeof message.boxes === 'object') {
-                boxes = message.boxes;
-                updateBoxDisplay();
-                
-                // Save to Firebase with logging
-                if (isAdmin) {
-                    saveBoxesToFirebase('state-response', currentUserName, { source: 'pubnub' });
-                }
-            }
-            break;
-        
-        case 'select-box':
-            // Handle the selection - but wait for Firebase confirmation before updating UI
-            (async () => {
-                // Remove any previous selection by this user
-                for (let boxNum in boxes) {
-                    if (boxes[boxNum] && boxes[boxNum].picker === message.userName) {
-                        boxes[boxNum].picker = '';
-                    }
-                }
-                // Add new selection
-                if (boxes[message.boxNumber]) {
-                    boxes[message.boxNumber].picker = message.userName;
-                }
-                
-                // Save to Firebase with logging (save from all users, not just admin)
-                const saveSuccess = await saveBoxesToFirebase('select-box', message.userName, {
-                    boxNumber: message.boxNumber,
-                    assigned: boxes[message.boxNumber]?.assigned
-                });
-                
-                // Only update UI after Firebase confirms save (or if Firebase not available)
-                hideBoxLoadingState(message.boxNumber);
-                updateBoxDisplay();
-                
-                if (!saveSuccess) {
-                    console.warn('⚠️ Firebase save failed, but showing selection anyway (PubNub sync)');
-                }
-            })();
-            break;
-            saveBoxesToFirebase('select-box', message.userName, {
-                boxNumber: message.boxNumber,
-                assigned: boxes[message.boxNumber]?.assigned
-            });
-            break;
-        
-        case 'unselect-box':
-            if (boxes[message.boxNumber] && boxes[message.boxNumber].picker === message.userName) {
-                boxes[message.boxNumber].picker = '';
-                updateBoxDisplay();
-                
-                // Save to Firebase with logging (save from all users, not just admin)
-                saveBoxesToFirebase('unselect-box', message.userName, {
-                    boxNumber: message.boxNumber
-                });
-            }
-            break;
-        
-        case 'admin-remove-box':
-            // Admin removing someone's box selection
-            console.log(`🗑️ Admin remove request for box ${message.boxNumber}, user: ${message.userName}`);
-            console.log(`📦 Current box state:`, boxes[message.boxNumber]);
-            
-            if (boxes[message.boxNumber]) {
-                if (boxes[message.boxNumber].picker === message.userName) {
-                    console.log(`✅ Removing ${message.userName} from box ${message.boxNumber}`);
-                    boxes[message.boxNumber].picker = '';
-                    updateBoxDisplay();
-                    
-                    // Save to Firebase with logging
-                    saveBoxesToFirebase('admin-remove-box', message.adminName || currentUserName, {
-                        boxNumber: message.boxNumber,
-                        removedUser: message.userName
-                    });
-                } else {
-                    console.log(`⚠️ Picker mismatch! Box has: "${boxes[message.boxNumber].picker}", message has: "${message.userName}"`);
-                }
-            } else {
-                console.log(`❌ Box ${message.boxNumber} does not exist in boxes object`);
-            }
-            break;
-        
-        case 'clear-users':
-            // Clear all users - removes all pickers but keeps assignments
-            for (let boxNum in boxes) {
-                if (boxes[boxNum]) {
-                    boxes[boxNum].picker = '';
-                }
-            }
-            updateBoxDisplay();
-            
-            // Save to Firebase with logging
-            saveBoxesToFirebase('clear-users', currentUserName, {
-                totalCleared: Object.keys(boxes).length
-            });
-            break;
-        
-        case 'upload-boxes':
-            boxes = message.boxes || {};
-            updateBoxDisplay();
-            
-            // Save to Firebase with logging
-            saveBoxesToFirebase('upload-boxes', currentUserName, {
-                totalBoxes: Object.keys(boxes).length
-            });
-            break;
-        
-        case 'scramble-boxes':
-            // Scramble assignments - update box assignments from admin
-            boxes = message.boxes || {};
-            updateBoxDisplay();
-            
-            // Save to Firebase with logging
-            saveBoxesToFirebase('scramble-boxes', currentUserName, {
-                totalBoxes: Object.keys(boxes).length
-            });
-            
-            alert('🔀 Admin has scrambled the box assignments! Your assignment may have changed.');
-            break;
-        
-        case 'name-change':
-            // Update all boxes that had the old picker name with the new name
-            if (message.boxes) {
-                boxes = message.boxes;
-                updateBoxDisplay();
-            }
-            break;
-        
-        case 'state-request':
-            // Someone is requesting current state, send it if we have boxes
-            if (Object.keys(boxes).length > 0) {
-                publishMessage({
-                    type: 'state-response',
-                    boxes: boxes
-                });
-            }
-            break;
-    }
-}
-
-function requestCurrentState() {
-    // Request current state from other clients
-    publishMessage({
-        type: 'state-request'
-    });
-    
-    // If no response after 2 seconds, use initialized state
-    setTimeout(() => {
-        if (Object.keys(boxes).filter(k => boxes[k] && boxes[k].picker).length === 0) {
-            console.log('Using initialized assignments');
-            updateBoxDisplay();
-        }
-    }, 2000);
-}
-
-function publishMessage(message) {
-    if (!pubnub || !isConnected) {
-        console.error('Not connected to PubNub');
-        return;
-    }
-    
-    pubnub.publish({
-        channel: CHANNEL_NAME,
-        message: message
-    }, function(status, response) {
-        if (status.error) {
-            console.error('Publish error:', status);
-        }
-    });
-}
 
 function updateSyncStatus(connected) {
     if (!syncIndicator || !syncStatus) return;
@@ -1290,7 +1107,7 @@ function handleUpload(event) {
     }
     
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
         try {
             const data = JSON.parse(e.target.result);
             
@@ -1301,11 +1118,12 @@ function handleUpload(event) {
                 );
                 
                 if (isValid) {
-                    // Publish to all clients
-                    publishMessage({
-                        type: 'upload-boxes',
-                        boxes: data.boxes
+                    // Update local state and save to Firebase
+                    boxes = data.boxes;
+                    await saveBoxesToFirebase('upload-boxes', currentUserName, {
+                        totalBoxes: Object.keys(boxes).length
                     });
+                    updateBoxDisplay();
                     alert('✅ Successfully loaded box assignments!');
                 } else {
                     alert('❌ Invalid file format: missing picker or assigned fields');
@@ -1323,7 +1141,7 @@ function handleUpload(event) {
     event.target.value = '';
 }
 
-function handleClearUsers() {
+async function handleClearUsers() {
     if (!isAdmin) return;
     
     // Prompt for admin password
@@ -1337,12 +1155,24 @@ function handleClearUsers() {
         return;
     }
     
-    // Publish clear-users to all clients
-    publishMessage({ type: 'clear-users' });
+    // Clear all pickers
+    for (let boxNum in boxes) {
+        if (boxes[boxNum]) {
+            boxes[boxNum].picker = '';
+        }
+    }
+    
+    // Save to Firebase (will sync to all clients)
+    await saveBoxesToFirebase('clear-users', currentUserName, {
+        totalCleared: Object.keys(boxes).length
+    });
+    
+    updateBoxDisplay();
+    alert('✅ All users have been cleared!');
 }
 
 // Handle scramble button - reshuffles box assignments (admin only)
-function handleScramble() {
+async function handleScramble() {
     if (!isAdmin) return;
     
     // Prompt for admin password
@@ -1375,17 +1205,12 @@ function handleScramble() {
     
     console.log('🔀 Scrambled box assignments:', boxes);
     
-    // Publish scramble message to all clients
-    publishMessage({ 
-        type: 'scramble-boxes',
-        boxes: boxes
-    });
-    
-    // Save to Firebase with logging
-    saveBoxesToFirebase('scramble-boxes', currentUserName, {
+    // Save to Firebase with logging (will sync to all clients)
+    await saveBoxesToFirebase('scramble-boxes', currentUserName, {
         totalBoxes: TOTAL_BOXES
     });
     
+    updateBoxDisplay();
     alert('✅ Box assignments have been scrambled! All users will see the new assignments.');
 }
 
@@ -1499,7 +1324,6 @@ function hideLoadingOverlay() {
     console.log('  - init function exists:', typeof init === 'function');
     console.log('  - participants array exists:', typeof participants !== 'undefined');
     console.log('  - firebase object exists:', typeof firebase !== 'undefined');
-    console.log('  - PubNub object exists:', typeof PubNub !== 'undefined');
     
     try {
         init();
