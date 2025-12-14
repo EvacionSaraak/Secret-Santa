@@ -18,15 +18,15 @@ Your Secret Santa app now has:
 2. **Autocomplete Preview** - Translucent text preview when typing names
 3. **Improved UI** - Better modals, prominent "Change Name" button
 4. **Admin Logout Fix** - Properly clears state and shows name picker
-5. **Firebase Integration** - Persistent storage instead of 7-day limit
-6. **Modular Architecture** - Clean separation of Firebase, PubNub, and app logic
+5. **Firebase-Only Integration** - Persistent storage with real-time sync
+6. **Modular Architecture** - Clean separation of Firebase and app logic
 7. **Activity Logging** - Every state change logged to Firebase
 
-### 📁 New Files Created
+### 📁 Files
 
-**Integration Modules:**
+**Integration Module:**
 - `firebase-integration.js` - All Firebase functionality
-- `pubnub-integration.js` - All PubNub functionality
+- `script.js` - Main application logic
 
 **Documentation:**
 - `FIREBASE_SETUP.md` - Detailed Firebase setup guide for users
@@ -69,7 +69,7 @@ Your Secret Santa app now has:
 
 4. **Deploy Your App**
    Options:
-   - Continue using GitHub Pages (database only in Firebase)
+   - Use GitHub Pages (recommended for simplicity)
    - Switch to Firebase Hosting (better integration)
    - Use both (recommended for learning)
 
@@ -162,9 +162,10 @@ After Firebase setup, verify:
 → Check browser console for permission errors
 
 **Real-time sync not working?**
-→ Verify PubNub is also configured
-→ Check that both Firebase and PubNub are initialized
+→ Verify Firebase is properly configured
+→ Check that Firebase is initialized without errors
 → Look for connection errors in console
+→ Ensure Firebase listeners are set up correctly
 
 ## 💡 Pro Tips
 

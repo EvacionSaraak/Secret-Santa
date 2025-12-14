@@ -7,15 +7,14 @@ I have a Secret Santa web application that needs Firebase Realtime Database inte
 
 ### Files Already in Place:
 1. **firebase-integration.js** - Contains Firebase initialization and data management functions
-2. **pubnub-integration.js** - Handles real-time messaging with PubNub
-3. **script-pubnub.js** - Main application logic
-4. **index.html** - HTML structure with Firebase SDK already included
-5. **FIREBASE_SETUP.md** - Detailed Firebase setup documentation
+2. **script.js** - Main application logic with Firebase integration
+3. **index.html** - HTML structure with Firebase SDK already included
+4. **FIREBASE_SETUP.md** - Detailed Firebase setup documentation
 
 ### What the Application Does:
 - Secret Santa box picker where participants select numbered boxes
 - Each box contains a pre-assigned recipient name (randomized once)
-- Real-time synchronization across multiple users via PubNub
+- Real-time synchronization across multiple users via Firebase Realtime Database
 - Persistent storage of box assignments and selections via Firebase
 - Activity logging for all state changes (select, unselect, clear, etc.)
 
@@ -134,7 +133,8 @@ If possible, suggest improvements for:
 - `admin-remove-box` - Admin removes a user's selection
 - `clear-users` - Admin clears all selections
 - `upload-boxes` - Admin uploads JSON data
-- `state-response` - State synchronized from PubNub
+- `scramble-boxes` - Admin scrambles assignments
+- `name-change` - User changes their name
 
 ## Questions for You (Gemini)
 
@@ -176,8 +176,7 @@ Please provide:
 ### Technical Stack
 - Plain JavaScript (no frameworks)
 - Bootstrap 5.3.2 for UI
-- Firebase Realtime Database
-- PubNub for real-time messaging
+- Firebase Realtime Database (for storage and real-time sync)
 - GitHub Pages for hosting (currently)
 
 ## Success Criteria
