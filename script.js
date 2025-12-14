@@ -769,7 +769,7 @@ function generateBoxes() {
     updateBoxDisplay();
 }
 
-function handleBoxClick(boxNumber) {
+async function handleBoxClick(boxNumber) {
     // Don't allow selection if disconnected
     if (!isConnected) {
         return;
