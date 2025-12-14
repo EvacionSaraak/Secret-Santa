@@ -186,6 +186,106 @@ async function logStateChangeToFirebase(actionType, userName, details = {}) {
 }
 
 /**
+ * Load a single box from Firebase
+ * @param {number} boxNumber - The box number to load
+ * @returns {Promise<Object|null>} Box data or null if not available
+ */
+async function loadSingleBoxFromFirebase(boxNumber) {
+    if (!firebaseInitialized || !database) {
+        console.log('ℹ️ Firebase not available');
+        return null;
+    }
+    
+    try {
+        const snapshot = await database.ref(`secretSanta/boxes/${boxNumber}`).once('value');
+        const boxData = snapshot.val();
+        
+        if (boxData) {
+            console.log(`✅ Loaded box ${boxNumber} from Firebase`);
+            return boxData;
+        } else {
+            console.log(`ℹ️ No data for box ${boxNumber} in Firebase`);
+            return null;
+        }
+    } catch (error) {
+        console.error(`❌ Error loading box ${boxNumber} from Firebase:`, error);
+        return null;
+    }
+}
+
+/**
+ * Atomically claim a box using Firebase transaction to prevent race conditions
+ * @param {number} boxNumber - The box number to claim
+ * @param {string} userName - User attempting to claim the box
+ * @returns {Promise<{success: boolean, message: string, assigned?: string}>}
+ */
+async function claimBoxAtomic(boxNumber, userName) {
+    if (!firebaseInitialized || !database) {
+        console.log('ℹ️ Firebase not available, skipping atomic claim');
+        return { success: false, message: 'Firebase not available' };
+    }
+    
+    try {
+        const boxRef = database.ref(`secretSanta/boxes/${boxNumber}`);
+        
+        // Use transaction to ensure atomic update
+        const result = await boxRef.transaction((currentBox) => {
+            if (!currentBox) {
+                // Box doesn't exist yet
+                return undefined; // Abort transaction
+            }
+            
+            if (currentBox.picker && currentBox.picker !== '') {
+                // Box is already claimed by someone
+                return undefined; // Abort transaction - keep existing value
+            }
+            
+            // Box is available, claim it
+            return {
+                picker: userName,
+                assigned: currentBox.assigned
+            };
+        });
+        
+        if (result.committed) {
+            // Successfully claimed the box
+            const assigned = result.snapshot.val().assigned;
+            console.log(`✅ Box ${boxNumber} claimed successfully by ${userName}`);
+            return { 
+                success: true, 
+                message: 'Box claimed successfully',
+                assigned: assigned
+            };
+        } else {
+            // Transaction was aborted - box already claimed
+            console.log(`⚠️ Box ${boxNumber} claim failed - already taken`);
+            
+            // Get the current state to see who claimed it
+            const snapshot = await boxRef.once('value');
+            const currentBox = snapshot.val();
+            
+            if (currentBox && currentBox.picker) {
+                return { 
+                    success: false, 
+                    message: `Box already claimed by someone else. Please select another box.`
+                };
+            }
+            
+            return { 
+                success: false, 
+                message: 'Box claim failed. Please try again.'
+            };
+        }
+    } catch (error) {
+        console.error('❌ Error claiming box atomically:', error);
+        return { 
+            success: false, 
+            message: 'Error claiming box. Please try again.'
+        };
+    }
+}
+
+/**
  * Setup Firebase real-time listeners for live sync
  * @param {Function} onBoxesUpdate - Callback when boxes are updated
  */

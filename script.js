@@ -815,25 +815,38 @@ async function handleBoxClick(boxNumber) {
             }
         }
         
-        // Box is available - show loading state and select it
+        // Box is available - show loading state and attempt to claim it
         showBoxLoadingState(boxNumber);
         
-        // Remove any previous selection by this user
-        for (let boxNum in boxes) {
-            if (boxes[boxNum] && boxes[boxNum].picker === currentUserName) {
-                boxes[boxNum].picker = '';
+        // Use atomic transaction to claim the box (prevents race conditions)
+        const claimResult = await claimBoxAtomic(boxNumber, currentUserName);
+        
+        if (claimResult.success) {
+            // Successfully claimed the box
+            boxes[boxNumber].picker = currentUserName;
+            
+            // Log the action
+            await logStateChangeToFirebase('select-box', currentUserName, {
+                boxNumber,
+                assigned: claimResult.assigned
+            });
+            
+            hideBoxLoadingState(boxNumber);
+            updateBoxDisplay();
+        } else {
+            // Failed to claim - someone else got it first
+            hideBoxLoadingState(boxNumber);
+            
+            // Refresh the box state from Firebase to show current picker
+            const updatedBox = await loadSingleBoxFromFirebase(boxNumber);
+            if (updatedBox) {
+                boxes[boxNumber] = updatedBox;
+                updateBoxDisplay();
             }
+            
+            // Show error message to user
+            alert(claimResult.message);
         }
-        
-        // Select the box
-        boxes[boxNumber].picker = currentUserName;
-        await saveBoxesToFirebase('select-box', currentUserName, {
-            boxNumber,
-            assigned: boxes[boxNumber].assigned
-        });
-        
-        hideBoxLoadingState(boxNumber);
-        updateBoxDisplay();
     } else {
         // Box is taken by someone else
         if (isAdmin) {
