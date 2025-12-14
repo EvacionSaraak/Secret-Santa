@@ -125,6 +125,17 @@ function toCamelCase(str) {
         .join(' ');
 }
 
+// Escape HTML to prevent XSS
+function escapeHtml(unsafe) {
+    if (unsafe == null) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Load participants from data/participants.txt
 async function loadParticipants() {
     try {
@@ -269,6 +280,20 @@ function setupEventListeners() {
     closeParticipantsBtn.addEventListener('click', () => {
         participantsModal.classList.add('hidden');
     });
+    
+    // Event delegation for dynamically added remove participant buttons
+    const participantsTableContainer = document.getElementById('participantsTableContainer');
+    if (participantsTableContainer) {
+        participantsTableContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-participant-btn')) {
+                const button = e.target.closest('.remove-participant-btn');
+                const participantName = button.getAttribute('data-participant-name');
+                if (participantName) {
+                    removeParticipant(participantName);
+                }
+            }
+        });
+    }
     
     if (downloadNonPickersBtn) {
         downloadNonPickersBtn.addEventListener('click', downloadNonPickers);
@@ -1288,11 +1313,11 @@ function showParticipants() {
         const rowClass = isAdmin && !details.hasPicked ? 'table-warning' : '';
         html += `<tr class="${rowClass}">`;
         html += `<td class="text-center">${index + 1}</td>`;
-        html += `<td>${participant}</td>`;
+        html += `<td>${escapeHtml(participant)}</td>`;
         
         if (isAdmin) {
-            html += `<td class="text-center"><span class="badge ${details.boxNumber === '-' ? 'bg-secondary' : 'bg-primary'}">${details.boxNumber}</span></td>`;
-            html += `<td>${details.giftingTo}</td>`;
+            html += `<td class="text-center"><span class="badge ${details.boxNumber === '-' ? 'bg-secondary' : 'bg-primary'}">${escapeHtml(details.boxNumber)}</span></td>`;
+            html += `<td>${escapeHtml(details.giftingTo)}</td>`;
             html += `<td class="text-center">`;
             if (details.hasPicked) {
                 html += '<span class="badge bg-success" aria-label="Picked"><i class="bi bi-check-circle" aria-hidden="true"></i> Picked</span>';
@@ -1301,7 +1326,7 @@ function showParticipants() {
             }
             html += '</td>';
             html += `<td class="text-center">`;
-            html += `<button class="btn btn-sm btn-danger remove-participant-btn" data-participant-name="${participant.replace(/"/g, '&quot;')}"><i class="bi bi-trash"></i> Remove</button>`;
+            html += `<button class="btn btn-sm btn-danger remove-participant-btn" data-participant-name="${escapeHtml(participant)}"><i class="bi bi-trash"></i> Remove</button>`;
             html += `</td>`;
         }
         
@@ -1358,17 +1383,6 @@ function showParticipants() {
                 }
             });
         }
-        
-        // Add event listeners for remove buttons
-        const removeButtons = document.querySelectorAll('.remove-participant-btn');
-        removeButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const participantName = button.getAttribute('data-participant-name');
-                if (participantName) {
-                    removeParticipant(participantName);
-                }
-            });
-        });
     }
 }
 
