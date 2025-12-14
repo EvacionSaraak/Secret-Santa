@@ -125,6 +125,17 @@ function toCamelCase(str) {
         .join(' ');
 }
 
+// Escape HTML to prevent XSS
+function escapeHtml(unsafe) {
+    if (unsafe == null) return '';
+    return String(unsafe)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+}
+
 // Load participants from data/participants.txt
 async function loadParticipants() {
     try {
@@ -174,7 +185,7 @@ async function loadBoxesFromFirebase() {
 
 // Wrapper function to save state to Firebase with logging
 async function saveBoxesToFirebase(actionType = 'state-update', userName = 'system', details = {}) {
-    const saveResult = await saveStateToFirebase(boxes, participants, TOTAL_BOXES);
+    const saveResult = await saveStateToFirebase(boxes, participants, TOTAL_BOXES, actionType);
     
     // Update local state with merged boxes if merge occurred
     if (saveResult.success && saveResult.mergedBoxes) {
@@ -269,6 +280,44 @@ function setupEventListeners() {
     closeParticipantsBtn.addEventListener('click', () => {
         participantsModal.classList.add('hidden');
     });
+    
+    // Event delegation for dynamically added participant management UI
+    const participantsTableContainer = document.getElementById('participantsTableContainer');
+    if (participantsTableContainer) {
+        // Handle remove participant button clicks
+        participantsTableContainer.addEventListener('click', (e) => {
+            if (e.target.closest('.remove-participant-btn')) {
+                const button = e.target.closest('.remove-participant-btn');
+                const participantName = button.getAttribute('data-participant-name');
+                if (participantName) {
+                    removeParticipant(participantName);
+                }
+            }
+            
+            // Handle add participant button clicks
+            if (e.target.closest('#addParticipantBtn')) {
+                const input = document.getElementById('newParticipantInput');
+                if (input) {
+                    const newName = input.value.trim();
+                    if (newName) {
+                        addParticipant(newName);
+                        input.value = '';
+                    }
+                }
+            }
+        });
+        
+        // Handle Enter key in add participant input
+        participantsTableContainer.addEventListener('keypress', (e) => {
+            if (e.target.id === 'newParticipantInput' && e.key === 'Enter') {
+                const newName = e.target.value.trim();
+                if (newName) {
+                    addParticipant(newName);
+                    e.target.value = '';
+                }
+            }
+        });
+    }
     
     if (downloadNonPickersBtn) {
         downloadNonPickersBtn.addEventListener('click', downloadNonPickers);
@@ -1247,8 +1296,21 @@ function showParticipants() {
     // Track non-pickers for the download button
     const nonPickers = [];
     
+    // Add participant management section for admin
+    let html = '';
+    if (isAdmin) {
+        html += '<div class="mb-4 p-3 bg-light rounded">';
+        html += '<h6 class="mb-3"><i class="bi bi-person-plus-fill"></i> Manage Participants</h6>';
+        html += '<div class="input-group">';
+        html += '<input type="text" id="newParticipantInput" class="form-control" placeholder="Enter new participant name..." />';
+        html += '<button class="btn btn-success" id="addParticipantBtn"><i class="bi bi-plus-circle"></i> Add Participant</button>';
+        html += '</div>';
+        html += '<small class="text-muted mt-2 d-block"><i class="bi bi-info-circle"></i> Adding or removing participants will reinitialize all box assignments.</small>';
+        html += '</div>';
+    }
+    
     // Create Bootstrap table
-    let html = '<table class="table table-striped table-hover">';
+    html += '<table class="table table-striped table-hover">';
     html += '<thead class="table-light"><tr>';
     html += '<th scope="col" class="text-center">#</th>';
     html += '<th scope="col">Participant Name</th>';
@@ -1257,6 +1319,7 @@ function showParticipants() {
         html += '<th scope="col" class="text-center">Box Picked</th>';
         html += '<th scope="col">Gifting To</th>';
         html += '<th scope="col" class="text-center">Status</th>';
+        html += '<th scope="col" class="text-center">Actions</th>';
     }
     
     html += '</tr></thead><tbody>';
@@ -1274,11 +1337,11 @@ function showParticipants() {
         const rowClass = isAdmin && !details.hasPicked ? 'table-warning' : '';
         html += `<tr class="${rowClass}">`;
         html += `<td class="text-center">${index + 1}</td>`;
-        html += `<td>${participant}</td>`;
+        html += `<td>${escapeHtml(participant)}</td>`;
         
         if (isAdmin) {
-            html += `<td class="text-center"><span class="badge ${details.boxNumber === '-' ? 'bg-secondary' : 'bg-primary'}">${details.boxNumber}</span></td>`;
-            html += `<td>${details.giftingTo}</td>`;
+            html += `<td class="text-center"><span class="badge ${details.boxNumber === '-' ? 'bg-secondary' : 'bg-primary'}">${escapeHtml(details.boxNumber)}</span></td>`;
+            html += `<td>${escapeHtml(details.giftingTo)}</td>`;
             html += `<td class="text-center">`;
             if (details.hasPicked) {
                 html += '<span class="badge bg-success" aria-label="Picked"><i class="bi bi-check-circle" aria-hidden="true"></i> Picked</span>';
@@ -1286,6 +1349,9 @@ function showParticipants() {
                 html += '<span class="badge bg-warning text-dark" aria-label="Not Picked"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> Not Picked</span>';
             }
             html += '</td>';
+            html += `<td class="text-center">`;
+            html += `<button class="btn btn-sm btn-danger remove-participant-btn" data-participant-name="${escapeHtml(participant)}"><i class="bi bi-trash"></i> Remove</button>`;
+            html += `</td>`;
         }
         
         html += '</tr>';
@@ -1316,6 +1382,88 @@ function showParticipants() {
     }
     
     participantsModal.classList.remove('hidden');
+}
+
+// Add a new participant (admin only)
+async function addParticipant(newName) {
+    if (!isAdmin) return;
+    
+    // Convert to camel case for consistency
+    const formattedName = toCamelCase(newName);
+    
+    // Check if participant already exists
+    if (participants.includes(formattedName)) {
+        alert(`Participant "${formattedName}" already exists in the list.`);
+        return;
+    }
+    
+    if (!confirm(`Add "${formattedName}" to the participants list?\n\nThis will reinitialize all box assignments and clear existing selections.`)) {
+        return;
+    }
+    
+    // Add to participants list
+    participants.push(formattedName);
+    TOTAL_BOXES = participants.length;
+    
+    // Reinitialize all assignments
+    initializeAssignments();
+    
+    // Save to Firebase
+    await saveBoxesToFirebase('add-participant', currentUserName, {
+        participantName: formattedName,
+        totalParticipants: participants.length
+    });
+    
+    // Update the display
+    updateBoxDisplay();
+    
+    // Refresh the modal
+    showParticipants();
+    
+    alert(`✅ Participant "${formattedName}" has been added!\n\nAll box assignments have been reinitialized.`);
+}
+
+// Remove a participant (admin only)
+async function removeParticipant(participantName) {
+    if (!isAdmin) return;
+    
+    // Find the participant
+    const index = participants.indexOf(participantName);
+    if (index === -1) {
+        alert(`Participant "${participantName}" not found.`);
+        return;
+    }
+    
+    // Check if they have picked a box
+    const details = getParticipantBoxDetails(participantName);
+    const warningMessage = details.hasPicked 
+        ? `Remove "${participantName}" from the participants list?\n\nThey have already picked box ${details.boxNumber}.\n\nThis will reinitialize all box assignments and clear existing selections.`
+        : `Remove "${participantName}" from the participants list?\n\nThis will reinitialize all box assignments and clear existing selections.`;
+    
+    if (!confirm(warningMessage)) {
+        return;
+    }
+    
+    // Remove from participants list
+    participants.splice(index, 1);
+    TOTAL_BOXES = participants.length;
+    
+    // Reinitialize all assignments
+    initializeAssignments();
+    
+    // Save to Firebase
+    await saveBoxesToFirebase('remove-participant', currentUserName, {
+        participantName: participantName,
+        totalParticipants: participants.length
+    });
+    
+    // Update the display
+    updateBoxDisplay();
+    
+    // Refresh the modal
+    showParticipants();
+    
+    alert(`✅ Participant "${participantName}" has been removed!\n\nAll box assignments have been reinitialized.`);
 }
 
 // Save current state to repository (manual for GitHub Pages - shows instructions)
