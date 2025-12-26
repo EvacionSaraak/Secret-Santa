@@ -854,6 +854,14 @@ async function handleBoxClick(boxNumber) {
     const box = boxes[boxNumber];
     if (!box) return;
     
+    // Prevent users from picking boxes where they would gift to themselves
+    // (unless they are admin)
+    if (!isAdmin && box.assigned === currentUserName && box.picker !== currentUserName) {
+        // Box is assigned to the current user - they cannot pick it
+        alert('This box is already claimed');
+        return;
+    }
+    
     if (box.picker === currentUserName) {
         // User is clicking their own box
         if (isAdmin) {
@@ -1015,6 +1023,11 @@ function updateBoxDisplay() {
                 contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
                 if (removeBtn) removeBtn.classList.add('hidden');
             }
+        } else if (!isAdmin && box.assigned === currentUserName) {
+            // Box is assigned to current user - display as claimed to prevent self-gifting
+            boxElement.classList.add('taken');
+            contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
+            if (removeBtn) removeBtn.classList.add('hidden');
         } else {
             // Available box
             boxElement.classList.add('available');
