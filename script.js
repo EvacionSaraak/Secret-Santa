@@ -48,7 +48,13 @@ const connectionStatus = document.getElementById('connectionStatus');
 const syncIndicator = document.querySelector('.sync-indicator');
 const syncStatus = document.querySelector('.sync-status');
 
-// Helper function to determine if a box should be hidden from user to prevent self-gifting
+/**
+ * Helper function to determine if a box should be hidden from user to prevent self-gifting
+ * @param {Object} box - The box object with picker and assigned properties
+ * @param {string} userName - The current user's name
+ * @param {boolean} isAdminUser - Whether the user is an admin
+ * @returns {boolean} True if the box should be hidden from the user, false otherwise
+ */
 function shouldHideBoxFromUser(box, userName, isAdminUser) {
     // Admin can see and interact with all boxes
     if (isAdminUser) return false;
@@ -56,6 +62,18 @@ function shouldHideBoxFromUser(box, userName, isAdminUser) {
     // Hide boxes assigned to the current user (where they would gift to themselves)
     // But don't hide if they've already picked this box (backward compatibility edge case)
     return box.assigned === userName && box.picker !== userName;
+}
+
+/**
+ * Helper function to display a box as claimed to regular users
+ * @param {HTMLElement} boxElement - The box DOM element
+ * @param {HTMLElement} contentDiv - The content div of the box
+ * @param {HTMLElement} removeBtn - The remove button element
+ */
+function displayBoxAsClaimed(boxElement, contentDiv, removeBtn) {
+    boxElement.classList.add('taken');
+    contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
+    if (removeBtn) removeBtn.classList.add('hidden');
 }
 
 // Initialize
@@ -1029,14 +1047,11 @@ function updateBoxDisplay() {
                 if (removeBtn) removeBtn.classList.remove('hidden');
             } else {
                 // Regular users just see "Claimed"
-                contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
-                if (removeBtn) removeBtn.classList.add('hidden');
+                displayBoxAsClaimed(boxElement, contentDiv, removeBtn);
             }
         } else if (shouldHideBoxFromUser(box, currentUserName, isAdmin)) {
             // Box is assigned to current user - display as claimed to prevent self-gifting
-            boxElement.classList.add('taken');
-            contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
-            if (removeBtn) removeBtn.classList.add('hidden');
+            displayBoxAsClaimed(boxElement, contentDiv, removeBtn);
         } else {
             // Available box
             boxElement.classList.add('available');
