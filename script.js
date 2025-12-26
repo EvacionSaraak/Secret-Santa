@@ -38,6 +38,7 @@ const uploadBtn = document.getElementById('uploadBtn');
 const uploadInput = document.getElementById('uploadInput');
 const clearUsersBtn = document.getElementById('clearUsersBtn');
 const scrambleBtn = document.getElementById('scrambleBtn');
+const resetRepopulateBtn = document.getElementById('resetRepopulateBtn');
 const showParticipantsBtn = document.getElementById('showParticipantsBtn');
 const participantsModal = document.getElementById('participantsModal');
 const closeParticipantsBtn = document.getElementById('closeParticipantsBtn');
@@ -276,6 +277,7 @@ function setupEventListeners() {
     uploadInput.addEventListener('change', handleUpload);
     clearUsersBtn.addEventListener('click', handleClearUsers);
     scrambleBtn.addEventListener('click', handleScramble);
+    resetRepopulateBtn.addEventListener('click', handleResetAndRepopulate);
     showParticipantsBtn.addEventListener('click', showParticipants);
     closeParticipantsBtn.addEventListener('click', () => {
         participantsModal.classList.add('hidden');
@@ -1287,6 +1289,57 @@ async function handleScramble() {
     
     updateBoxDisplay();
     alert('✅ Box assignments have been scrambled! All users will see the new assignments.');
+}
+
+// Handle reset and repopulate button - clears database and creates new boxes (admin only)
+async function handleResetAndRepopulate() {
+    if (!isAdmin) return;
+    
+    // Prompt for admin password
+    const password = prompt('⚠️ ADMIN PASSWORD REQUIRED\n\nEnter the admin password to reset and repopulate:');
+    if (password !== ADMIN_PASSWORD) {
+        alert('❌ Incorrect password. Action cancelled.');
+        return;
+    }
+    
+    if (!confirm('🔄 RESET & REPOPULATE DATABASE\n\nThis will:\n1. Clear the ENTIRE Firebase database\n2. Remove all current boxes and assignments\n3. Reload participants from participants.txt\n4. Create NEW boxes with NEW random assignments\n\n⚠️ WARNING: This action CANNOT be undone!\n\nAre you absolutely sure you want to do this?')) {
+        return;
+    }
+    
+    try {
+        showLoadingOverlay('Resetting database...');
+        
+        // Step 1: Clear the entire Firebase database
+        console.log('🗑️ Clearing Firebase database...');
+        await clearFirebaseDatabase();
+        
+        // Step 2: Reload participants from file
+        console.log('📂 Reloading participants from file...');
+        await loadParticipants();
+        console.log(`✅ Reloaded ${participants.length} participants`);
+        
+        // Step 3: Initialize new assignments (this creates fresh boxes)
+        console.log('🎲 Creating new box assignments...');
+        initializeAssignments();
+        
+        // Step 4: Save new state to Firebase
+        console.log('💾 Saving new state to Firebase...');
+        await saveBoxesToFirebase('reset-repopulate', currentUserName, {
+            totalBoxes: TOTAL_BOXES,
+            participantsCount: participants.length
+        });
+        
+        // Step 5: Regenerate the box grid
+        console.log('📦 Regenerating boxes...');
+        generateBoxes();
+        
+        hideLoadingOverlay();
+        alert('✅ Database reset and repopulated successfully!\n\nNew boxes have been created with fresh assignments.');
+    } catch (error) {
+        console.error('❌ Error during reset and repopulate:', error);
+        hideLoadingOverlay();
+        alert('❌ Error during reset: ' + error.message);
+    }
 }
 
 // Show participants list in a modal

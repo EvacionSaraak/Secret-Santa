@@ -345,6 +345,28 @@ function setupFirebaseListeners(onBoxesUpdate) {
 }
 
 /**
+ * Clear the entire Firebase database
+ * This removes all data from the secretSanta path
+ * @returns {Promise<boolean>} Success status
+ */
+async function clearFirebaseDatabase() {
+    if (!firebaseInitialized || !database) {
+        console.log('ℹ️ Firebase not available, skipping database clear');
+        return false;
+    }
+    
+    try {
+        // Remove all data from the secretSanta path
+        await database.ref('secretSanta').remove();
+        console.log('✅ Firebase database cleared successfully');
+        return true;
+    } catch (error) {
+        console.error('❌ Error clearing Firebase database:', error);
+        throw error;
+    }
+}
+
+/**
  * Disconnect Firebase listeners
  */
 function disconnectFirebase() {
