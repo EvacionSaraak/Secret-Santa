@@ -56,6 +56,9 @@ const syncStatus = document.querySelector('.sync-status');
  * @returns {boolean} True if the box should be hidden from the user, false otherwise
  */
 function shouldHideBoxFromUser(box, userName, isAdminUser) {
+    // Validate inputs
+    if (!box || !userName) return false;
+    
     // Admin can see and interact with all boxes
     if (isAdminUser) return false;
     
@@ -71,6 +74,9 @@ function shouldHideBoxFromUser(box, userName, isAdminUser) {
  * @param {HTMLElement} removeBtn - The remove button element
  */
 function displayBoxAsClaimed(boxElement, contentDiv, removeBtn) {
+    // Validate DOM elements
+    if (!boxElement || !contentDiv) return;
+    
     boxElement.classList.add('taken');
     contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
     if (removeBtn) removeBtn.classList.add('hidden');
@@ -883,9 +889,10 @@ async function handleBoxClick(boxNumber) {
     if (!box) return;
     
     // Prevent users from picking boxes where they would gift to themselves
+    // Note: This works in tandem with updateBoxDisplay(), which shows these boxes as "Claimed"
+    // to the user, so clicking them results in a silent return (no alert needed)
     if (shouldHideBoxFromUser(box, currentUserName, isAdmin)) {
         // Box is assigned to the current user - they cannot pick it
-        // Note: We don't show an alert here because the UI already shows this box as "Claimed"
         return;
     }
     
