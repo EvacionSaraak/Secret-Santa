@@ -48,6 +48,40 @@ const connectionStatus = document.getElementById('connectionStatus');
 const syncIndicator = document.querySelector('.sync-indicator');
 const syncStatus = document.querySelector('.sync-status');
 
+/**
+ * Helper function to determine if a box should be hidden from user to prevent self-gifting
+ * @param {Object} box - The box object with picker and assigned properties
+ * @param {string} userName - The current user's name
+ * @param {boolean} isAdminUser - Whether the user is an admin
+ * @returns {boolean} True if the box should be hidden from the user, false otherwise
+ */
+function shouldHideBoxFromUser(box, userName, isAdminUser) {
+    // Validate inputs
+    if (!box || !userName) return false;
+    
+    // Admin can see and interact with all boxes
+    if (isAdminUser) return false;
+    
+    // Hide boxes assigned to the current user (where they would gift to themselves)
+    // But don't hide if they've already picked this box (backward compatibility edge case)
+    return box.assigned === userName && box.picker !== userName;
+}
+
+/**
+ * Helper function to display a box as claimed to regular users
+ * @param {HTMLElement} boxElement - The box DOM element
+ * @param {HTMLElement} contentDiv - The content div of the box
+ * @param {HTMLElement} removeBtn - The remove button element
+ */
+function displayBoxAsClaimed(boxElement, contentDiv, removeBtn) {
+    // Validate DOM elements
+    if (!boxElement || !contentDiv) return;
+    
+    boxElement.classList.add('taken');
+    contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
+    if (removeBtn) removeBtn.classList.add('hidden');
+}
+
 // Initialize
 async function init() {
     console.log('🎅 === SECRET SANTA APPLICATION STARTING ===');
@@ -854,6 +888,14 @@ async function handleBoxClick(boxNumber) {
     const box = boxes[boxNumber];
     if (!box) return;
     
+    // Prevent users from picking boxes where they would gift to themselves
+    // Note: This works in tandem with updateBoxDisplay(), which shows these boxes as "Claimed"
+    // to the user, so clicking them results in a silent return (no alert needed)
+    if (shouldHideBoxFromUser(box, currentUserName, isAdmin)) {
+        // Box is assigned to the current user - they cannot pick it
+        return;
+    }
+    
     if (box.picker === currentUserName) {
         // User is clicking their own box
         if (isAdmin) {
@@ -1012,9 +1054,11 @@ function updateBoxDisplay() {
                 if (removeBtn) removeBtn.classList.remove('hidden');
             } else {
                 // Regular users just see "Claimed"
-                contentDiv.innerHTML = `<div class="box-claimed">Claimed</div>`;
-                if (removeBtn) removeBtn.classList.add('hidden');
+                displayBoxAsClaimed(boxElement, contentDiv, removeBtn);
             }
+        } else if (shouldHideBoxFromUser(box, currentUserName, isAdmin)) {
+            // Box is assigned to current user - display as claimed to prevent self-gifting
+            displayBoxAsClaimed(boxElement, contentDiv, removeBtn);
         } else {
             // Available box
             boxElement.classList.add('available');
