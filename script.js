@@ -856,9 +856,11 @@ async function handleBoxClick(boxNumber) {
     
     // Prevent users from picking boxes where they would gift to themselves
     // (unless they are admin)
+    // The check box.picker !== currentUserName handles the edge case where a user
+    // has already picked a box assigned to themselves (from before this restriction was added)
     if (!isAdmin && box.assigned === currentUserName && box.picker !== currentUserName) {
         // Box is assigned to the current user - they cannot pick it
-        alert('This box is already claimed');
+        // Note: We don't show an alert here because the UI already shows this box as "Claimed"
         return;
     }
     
