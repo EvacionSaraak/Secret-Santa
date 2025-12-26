@@ -1302,7 +1302,16 @@ async function handleResetAndRepopulate() {
         return;
     }
     
-    if (!confirm('🔄 RESET & REPOPULATE DATABASE\n\nThis will:\n1. Clear the ENTIRE Firebase database\n2. Remove all current boxes and assignments\n3. Reload participants from participants.txt\n4. Create NEW boxes with NEW random assignments\n\n⚠️ WARNING: This action CANNOT be undone!\n\nAre you absolutely sure you want to do this?')) {
+    const confirmMessage = '🔄 RESET & REPOPULATE DATABASE\n\n' +
+        'This will:\n' +
+        '1. Clear the ENTIRE Firebase database\n' +
+        '2. Remove all current boxes and assignments\n' +
+        '3. Reload participants from participants.txt\n' +
+        '4. Create NEW boxes with NEW random assignments\n\n' +
+        '⚠️ WARNING: This action CANNOT be undone!\n\n' +
+        'Are you absolutely sure you want to do this?';
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
     
