@@ -176,17 +176,22 @@ async function loadParticipants() {
     try {
         const response = await fetch('data/participants.txt');
         const text = await response.text();
+        const seen = new Set();
         participants = text.split('\n')
             .map(name => name.trim())
             .filter(name => name.length > 0)
             .map(name => {
                 // Remove quotes, commas, and other JSON formatting characters
-                let cleaned = name.replace(/^["'\s]+|["',\s]+$/g, '');
+                let cleaned = name.replace(/^[\"',\s]+|[\"',\s]+$/g, '');
                 return toCamelCase(cleaned);
             })
-            .filter((name, index, self) => {
-                // Remove duplicates (keep only first occurrence)
-                return name.length > 0 && self.indexOf(name) === index;
+            .filter(name => {
+                // Remove duplicates (keep only first occurrence) using Set for O(n) performance
+                if (name.length > 0 && !seen.has(name)) {
+                    seen.add(name);
+                    return true;
+                }
+                return false;
             });
         
         TOTAL_BOXES = participants.length;
