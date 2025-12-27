@@ -179,7 +179,15 @@ async function loadParticipants() {
         participants = text.split('\n')
             .map(name => name.trim())
             .filter(name => name.length > 0)
-            .map(name => toCamelCase(name)); // Convert all to Camel Case
+            .map(name => {
+                // Remove quotes, commas, and other JSON formatting characters
+                let cleaned = name.replace(/^["'\s]+|["',\s]+$/g, '');
+                return toCamelCase(cleaned);
+            })
+            .filter((name, index, self) => {
+                // Remove duplicates (keep only first occurrence)
+                return name.length > 0 && self.indexOf(name) === index;
+            });
         
         TOTAL_BOXES = participants.length;
         console.log(`Loaded ${TOTAL_BOXES} participants`);
