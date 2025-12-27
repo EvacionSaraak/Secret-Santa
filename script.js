@@ -646,6 +646,55 @@ async function handleNameSubmit() {
     }
     
     console.log(`✅ Match found: "${exactMatch}"`);
+    
+    // Check if this name already has a claimed box
+    let nameHasBox = false;
+    let boxDetails = null;
+    for (let boxNum in boxes) {
+        if (boxes[boxNum] && boxes[boxNum].picker === exactMatch) {
+            nameHasBox = true;
+            boxDetails = {
+                boxNumber: boxNum,
+                assigned: boxes[boxNum].assigned
+            };
+            break;
+        }
+    }
+    
+    // If name already has a box, show warning and ask for confirmation
+    if (nameHasBox) {
+        const warningMessage = `⚠️ WARNING: Name Already in Use\n\n` +
+            `The name "${exactMatch}" has already picked a box!\n\n` +
+            `Box Details:\n` +
+            `• Box Number: ${boxDetails.boxNumber}\n` +
+            `• Assigned to gift: ${boxDetails.assigned}\n\n` +
+            `If you continue, you will log in as "${exactMatch}", but this will NOT affect their existing box selection.\n\n` +
+            `⚠️ IMPORTANT: This means "${exactMatch}" will have multiple sessions in the system.\n\n` +
+            `Are you sure you want to continue?`;
+        
+        if (!confirm(warningMessage)) {
+            // User cancelled
+            console.log(`⚠️ User cancelled login as "${exactMatch}" who has box ${boxDetails.boxNumber}`);
+            return;
+        }
+        
+        // Ask for second confirmation
+        const doubleConfirm = confirm(
+            `⚠️ SECOND CONFIRMATION REQUIRED\n\n` +
+            `You are about to log in as "${exactMatch}" who already has a box.\n\n` +
+            `This is your FINAL chance to cancel.\n\n` +
+            `Click OK to proceed, or Cancel to abort.`
+        );
+        
+        if (!doubleConfirm) {
+            // User cancelled on second confirmation
+            console.log(`⚠️ User cancelled login (second confirmation) as "${exactMatch}"`);
+            return;
+        }
+        
+        console.warn(`⚠️ User logged in as "${exactMatch}" who already has box ${boxDetails.boxNumber}`);
+    }
+    
     currentUserName = exactMatch; // Use exact match from participants
     isAdmin = false; // Regular users cannot become admin via normal login
     localStorage.setItem('secretSantaUserName', currentUserName);
@@ -798,13 +847,53 @@ async function handleChangeNameSubmit() {
     }
     
     // Check if the target name already has a claimed box
+    let targetHasBox = false;
+    let targetBoxDetails = null;
     for (let boxNum in boxes) {
         if (boxes[boxNum] && boxes[boxNum].picker === trimmedName) {
-            // Silently prevent name change - just close the modal
+            targetHasBox = true;
+            targetBoxDetails = {
+                boxNumber: boxNum,
+                assigned: boxes[boxNum].assigned
+            };
+            break;
+        }
+    }
+    
+    // If target name already has a box, show warning and ask for confirmation
+    if (targetHasBox) {
+        const warningMessage = `⚠️ WARNING: Name Already in Use\n\n` +
+            `The name "${trimmedName}" has already picked a box!\n\n` +
+            `Box Details:\n` +
+            `• Box Number: ${targetBoxDetails.boxNumber}\n` +
+            `• Assigned to gift: ${targetBoxDetails.assigned}\n\n` +
+            `If you continue, you will change your identity to "${trimmedName}", but this will NOT affect their existing box selection.\n\n` +
+            `⚠️ IMPORTANT: This means "${trimmedName}" will have multiple identities in the system.\n\n` +
+            `Are you sure you want to continue?`;
+        
+        if (!confirm(warningMessage)) {
+            // User cancelled, close modal
             changeNameModal.classList.add('hidden');
             changeNameInput.value = '';
             return;
         }
+        
+        // Ask for second confirmation
+        const doubleConfirm = confirm(
+            `⚠️ SECOND CONFIRMATION REQUIRED\n\n` +
+            `You are about to change your name to "${trimmedName}" who already has a box.\n\n` +
+            `This is your FINAL chance to cancel.\n\n` +
+            `Click OK to proceed, or Cancel to abort.`
+        );
+        
+        if (!doubleConfirm) {
+            // User cancelled on second confirmation, close modal
+            changeNameModal.classList.add('hidden');
+            changeNameInput.value = '';
+            return;
+        }
+        
+        console.warn(`⚠️ User changed name to "${trimmedName}" who already has box ${targetBoxDetails.boxNumber}`);
     }
     
     const oldName = currentUserName;
