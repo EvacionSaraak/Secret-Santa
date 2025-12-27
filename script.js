@@ -823,11 +823,19 @@ async function handleChangeNameSubmit() {
     // Update admin controls
     updateAdminControls();
     
-    // Update all boxes that had the old picker name
+    // Update the box that had the old picker name
+    // Note: Users should only have ONE box, but we loop to find it
+    let updatedCount = 0;
     for (let boxNumber in boxes) {
         if (boxes[boxNumber] && boxes[boxNumber].picker === oldName) {
             boxes[boxNumber].picker = currentUserName;
+            updatedCount++;
         }
+    }
+    
+    // Log warning if user somehow had multiple boxes (shouldn't happen)
+    if (updatedCount > 1) {
+        console.warn(`⚠️ User ${oldName} had ${updatedCount} boxes during name change to ${currentUserName}`);
     }
     
     // Save state to Firebase (will sync to all clients via listeners)
@@ -1150,20 +1158,40 @@ function downloadJSON() {
 }
 
 // Helper function to get participant's box details
+// Returns details about ALL boxes picked by this participant
 function getParticipantBoxDetails(participantName) {
+    const pickedBoxes = [];
+    
     for (const [boxNum, box] of Object.entries(boxes)) {
         if (box && box.picker === participantName) {
-            return {
-                hasPicked: true,
+            pickedBoxes.push({
                 boxNumber: boxNum,
                 giftingTo: box.assigned || '-'
-            };
+            });
         }
     }
+    
+    if (pickedBoxes.length > 0) {
+        // If user has multiple boxes (shouldn't happen), return first one but log warning
+        if (pickedBoxes.length > 1) {
+            console.warn(`⚠️ Participant ${participantName} has picked ${pickedBoxes.length} boxes:`, pickedBoxes);
+        }
+        
+        return {
+            hasPicked: true,
+            boxNumber: pickedBoxes[0].boxNumber,
+            giftingTo: pickedBoxes[0].giftingTo,
+            multipleBoxes: pickedBoxes.length > 1,
+            allBoxes: pickedBoxes
+        };
+    }
+    
     return {
         hasPicked: false,
         boxNumber: '-',
-        giftingTo: '-'
+        giftingTo: '-',
+        multipleBoxes: false,
+        allBoxes: []
     };
 }
 
@@ -1412,8 +1440,9 @@ async function handleResetAndRepopulate() {
 function showParticipants() {
     const tableContainer = document.getElementById('participantsTableContainer');
     
-    // Track non-pickers for the download button
+    // Track non-pickers and duplicate pickers for the download button
     const nonPickers = [];
+    const duplicatePickers = [];
     
     // Add participant management section for admin
     let html = '';
@@ -1447,23 +1476,52 @@ function showParticipants() {
         // Get participant's box details
         const details = getParticipantBoxDetails(participant);
         
-        // Track non-pickers for admin
-        if (isAdmin && !details.hasPicked) {
-            nonPickers.push(participant);
+        // Track non-pickers and duplicate pickers for admin
+        if (isAdmin) {
+            if (!details.hasPicked) {
+                nonPickers.push(participant);
+            } else if (details.multipleBoxes) {
+                duplicatePickers.push({
+                    name: participant,
+                    boxes: details.allBoxes
+                });
+            }
         }
         
-        // Highlight row for non-pickers in admin view
-        const rowClass = isAdmin && !details.hasPicked ? 'table-warning' : '';
+        // Highlight row for non-pickers or multi-pickers in admin view
+        let rowClass = '';
+        if (isAdmin) {
+            if (!details.hasPicked) {
+                rowClass = 'table-warning'; // Yellow for non-pickers
+            } else if (details.multipleBoxes) {
+                rowClass = 'table-danger'; // Red for multiple boxes (data corruption)
+            }
+        }
         html += `<tr class="${rowClass}">`;
         html += `<td class="text-center">${index + 1}</td>`;
         html += `<td>${escapeHtml(participant)}</td>`;
         
         if (isAdmin) {
-            html += `<td class="text-center"><span class="badge ${details.boxNumber === '-' ? 'bg-secondary' : 'bg-primary'}">${escapeHtml(details.boxNumber)}</span></td>`;
-            html += `<td>${escapeHtml(details.giftingTo)}</td>`;
+            // Show box number - if multiple boxes, show all of them
+            const boxDisplay = details.multipleBoxes 
+                ? details.allBoxes.map(b => b.boxNumber).join(', ')
+                : details.boxNumber;
+            const badgeClass = details.boxNumber === '-' ? 'bg-secondary' : (details.multipleBoxes ? 'bg-danger' : 'bg-primary');
+            html += `<td class="text-center"><span class="badge ${badgeClass}">${escapeHtml(boxDisplay)}</span></td>`;
+            
+            // Show gifting to - if multiple boxes, show all assignments
+            const giftingDisplay = details.multipleBoxes
+                ? details.allBoxes.map(b => b.giftingTo).join(', ')
+                : details.giftingTo;
+            html += `<td>${escapeHtml(giftingDisplay)}</td>`;
+            
             html += `<td class="text-center">`;
             if (details.hasPicked) {
-                html += '<span class="badge bg-success" aria-label="Picked"><i class="bi bi-check-circle" aria-hidden="true"></i> Picked</span>';
+                if (details.multipleBoxes) {
+                    html += '<span class="badge bg-danger" aria-label="Multiple Boxes (Error)"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> Multiple Boxes!</span>';
+                } else {
+                    html += '<span class="badge bg-success" aria-label="Picked"><i class="bi bi-check-circle" aria-hidden="true"></i> Picked</span>';
+                }
             } else {
                 html += '<span class="badge bg-warning text-dark" aria-label="Not Picked"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> Not Picked</span>';
             }
@@ -1478,15 +1536,30 @@ function showParticipants() {
     
     html += '</tbody></table>';
     
+    // Add alerts for different scenarios
     if (!isAdmin) {
         html += '<div class="alert alert-info mt-3" role="alert"><small><i class="bi bi-info-circle"></i> As a participant, you can only see the list of names. Admin can see who picked which box and assignments.</small></div>';
-    } else if (nonPickers.length > 0) {
-        html += `<div class="alert alert-warning mt-3" role="alert">`;
-        html += `<i class="bi bi-exclamation-triangle"></i> <strong>${nonPickers.length} participant(s) haven't picked a box yet.</strong>`;
-        html += `<br><small>Highlighted rows show participants who haven't made their selection.</small>`;
-        html += `</div>`;
     } else {
-        html += '<div class="alert alert-success mt-3" role="alert"><i class="bi bi-check-circle"></i> <strong>All participants have picked their boxes!</strong></div>';
+        // Admin alerts - check for duplicate pickers first (most critical)
+        if (duplicatePickers.length > 0) {
+            html += `<div class="alert alert-danger mt-3" role="alert">`;
+            html += `<i class="bi bi-exclamation-triangle-fill"></i> <strong>⚠️ DATA CORRUPTION DETECTED: ${duplicatePickers.length} participant(s) have picked multiple boxes!</strong>`;
+            html += `<br><small>This should not happen in normal operation. Rows highlighted in RED show affected participants.</small>`;
+            html += `<br><br><strong>Affected participants:</strong><ul class="mb-0">`;
+            duplicatePickers.forEach(dp => {
+                html += `<li>${escapeHtml(dp.name)}: Boxes ${dp.boxes.map(b => b.boxNumber).join(', ')}</li>`;
+            });
+            html += `</ul>`;
+            html += `<br><small><strong>Recommended action:</strong> Use "Clear All Users" to reset all pickers and have participants re-select their boxes.</small>`;
+            html += `</div>`;
+        } else if (nonPickers.length > 0) {
+            html += `<div class="alert alert-warning mt-3" role="alert">`;
+            html += `<i class="bi bi-exclamation-triangle"></i> <strong>${nonPickers.length} participant(s) haven't picked a box yet.</strong>`;
+            html += `<br><small>Highlighted rows (YELLOW) show participants who haven't made their selection.</small>`;
+            html += `</div>`;
+        } else {
+            html += '<div class="alert alert-success mt-3" role="alert"><i class="bi bi-check-circle"></i> <strong>All participants have picked their boxes!</strong></div>';
+        }
     }
     
     tableContainer.innerHTML = html;
